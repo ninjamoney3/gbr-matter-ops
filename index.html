@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GBR Matter Ops — Gaul, Baratta &amp; Rosello, LLC</title>
+<meta name="description" content="Deadline engine, discovery ledger, records chase, letters, and pre-bill scrub for Gaul, Baratta &amp; Rosello, LLC.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#14181D">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Matter Ops">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#14181D; --ink2:#2C3742; --paper:#F5F5F1; --card:#FFFFFF;
+  --rule:#D9D9D1; --rule2:#ECECE6; --muted:#6B7280;
+  --stamp:#1B3A8F; --stamp-soft:#EEF2FC;
+  --oxblood:#6E1E2B; --oxblood-soft:#F7EAEC;
+  --brass:#8A5A16; --brass-soft:#F8F0DF;
+  --moss:#14614F; --moss-soft:#E6F0ED;
+  --disp:"Fraunces",Georgia,serif;
+  --body:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button{font-family:inherit;cursor:pointer;font-size:13px;font-weight:500;padding:7px 13px;border-radius:5px;border:1px solid var(--rule);background:var(--card);color:var(--ink)}
+button:hover{border-color:var(--ink2)}
+button:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+button.primary{background:var(--stamp);border-color:var(--stamp);color:#fff}
+button.primary:hover{background:#16307a}
+button.danger{background:var(--oxblood);border-color:var(--oxblood);color:#fff}
+button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+button.sm{padding:4px 9px;font-size:12px}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{font-family:var(--mono);font-size:13px;width:100%;padding:8px 9px;border:1px solid var(--rule);border-radius:5px;background:var(--card);color:var(--ink)}
+input.t,textarea.t,select.t{font-family:var(--body)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--stamp);outline-offset:-1px;border-color:var(--stamp)}
+label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px}
+a{color:var(--stamp)}
+
+/* masthead */
+header.top{background:var(--ink);color:#F5F5F1;padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:3px solid var(--stamp)}
+header.top h1{font-family:var(--disp);font-weight:600;font-size:23px;letter-spacing:.2px}
+header.top .firm{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#98A3B0}
+header.top .sp{flex:1}
+header.top .who{font-size:12px;color:#98A3B0}
+nav.tabs{background:var(--card);border-bottom:1px solid var(--rule);display:flex;gap:0;overflow-x:auto;padding:0 12px}
+nav.tabs button{border:none;background:none;border-radius:0;padding:12px 14px;color:var(--muted);font-weight:500;white-space:nowrap;border-bottom:2px solid transparent}
+nav.tabs button:hover{color:var(--ink);border-color:var(--rule)}
+nav.tabs button.on{color:var(--stamp);border-color:var(--stamp);font-weight:600}
+nav.tabs .badge{display:inline-block;background:var(--oxblood);color:#fff;font-size:10px;border-radius:9px;padding:1px 6px;margin-left:5px;font-weight:600}
+main{max-width:1360px;margin:0 auto;padding:20px 22px 90px}
+.panel{display:none}.panel.on{display:block}
+
+h2.sec{font-family:var(--disp);font-weight:600;font-size:21px;margin:0 0 3px}
+p.sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:7px;padding:16px 18px;margin-bottom:14px}
+.card h3{font-family:var(--disp);font-weight:600;font-size:16px;margin-bottom:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+.full{grid-column:1/-1}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+
+/* stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:18px}
+.tile{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--stamp);border-radius:6px;padding:14px 16px;cursor:pointer}
+.tile:hover{border-color:var(--ink2);border-left-color:var(--stamp)}
+.tile.red{border-left-color:var(--oxblood)} .tile.amber{border-left-color:var(--brass)} .tile.green{border-left-color:var(--moss)}
+.tile .n{font-family:var(--disp);font-size:31px;font-weight:600;line-height:1}
+.tile .l{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:5px;font-weight:600}
+.tile.red .n{color:var(--oxblood)} .tile.amber .n{color:var(--brass)} .tile.green .n{color:var(--moss)}
+
+/* tables */
+.tw{background:var(--card);border:1px solid var(--rule);border-radius:7px;overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:9px 10px;border-bottom:1px solid var(--rule);background:#FBFBF8;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--rule2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#FCFCFA}
+.cn{font-family:var(--disp);font-size:16px;font-weight:600;line-height:1.2}
+.meta{font-size:11px;color:var(--muted);margin-top:2px}
+.pill{display:inline-block;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:3px;font-weight:600;white-space:nowrap}
+.p-blue{background:var(--stamp-soft);color:var(--stamp)}
+.p-red{background:var(--oxblood-soft);color:var(--oxblood)}
+.p-amber{background:var(--brass-soft);color:var(--brass)}
+.p-green{background:var(--moss-soft);color:var(--moss)}
+.p-grey{background:#EFEFEA;color:var(--muted)}
+.num{font-family:var(--disp);font-size:19px;font-weight:600}
+.c-red{color:var(--oxblood)}.c-amber{color:var(--brass)}.c-green{color:var(--moss)}.c-grey{color:#B4B4AC}
+
+/* ladder */
+.ladder{margin-top:6px;width:200px}
+.ladder .tr{position:relative;height:4px;background:var(--rule2);border-radius:2px}
+.ladder .fl{position:absolute;left:0;top:0;bottom:0;background:var(--stamp);border-radius:2px}
+.ladder .tk{position:absolute;top:-4px;width:2px;height:12px;background:var(--ink)}
+.ladder .tk.r{background:var(--muted)} .ladder .tk.d{background:var(--oxblood)}
+.ladder .lb{display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--muted)}
+.ladder .lb b{display:block;color:var(--ink2);font-weight:600;font-family:var(--mono)}
+
+/* drop */
+#drop{border:2px dashed var(--rule);border-radius:7px;background:var(--card);padding:26px;text-align:center;cursor:pointer;transition:.15s}
+#drop.hot{border-color:var(--stamp);background:var(--stamp-soft)}
+#drop h3{font-family:var(--disp);font-size:19px;font-weight:600;margin-bottom:5px}
+#drop p{color:var(--muted);font-size:13px}
+.job{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--stamp);border-radius:5px;padding:10px 13px;margin-top:8px;display:flex;gap:11px;align-items:center;font-size:13px}
+.job.err{border-left-color:var(--oxblood)}
+.job .nm{flex:1;font-weight:500;word-break:break-all}
+.job .st{color:var(--muted);font-size:12px}
+.spin{width:13px;height:13px;border:2px solid var(--rule2);border-top-color:var(--stamp);border-radius:50%;animation:sp .7s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(20,24,29,.55);display:flex;align-items:flex-start;justify-content:center;padding:26px 14px;overflow:auto;z-index:60}
+.modal{background:var(--card);border-radius:8px;width:100%;max-width:760px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal .mh{padding:15px 19px;border-bottom:1px solid var(--rule)}
+.modal .mh h3{font-family:var(--disp);font-size:20px;font-weight:600}
+.modal .mh .s{font-size:11.5px;color:var(--muted);margin-top:2px}
+.mb{padding:17px 19px}
+.mf{padding:13px 19px;border-top:1px solid var(--rule);display:flex;gap:8px;justify-content:flex-end;background:#FBFBF8;border-radius:0 0 8px 8px}
+.derived{background:var(--stamp-soft);border:1px solid #D4DDF5;border-radius:6px;padding:12px 14px;margin-top:15px}
+.derived h4{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--stamp);margin-bottom:8px}
+.derived .r{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:12.5px;border-bottom:1px solid #E2E8F7}
+.derived .r:last-child{border:none}
+.flagme{border-color:var(--brass);background:#FDFAF3}
+
+.warn{background:var(--brass-soft);border:1px solid #E7D5AC;border-radius:6px;padding:11px 14px;font-size:12px;color:#6E4A11;line-height:1.6;margin:12px 0}
+.alert{background:var(--oxblood-soft);border:1px solid #E4C3C8;border-radius:6px;padding:11px 14px;font-size:12px;color:var(--oxblood);line-height:1.6;margin:12px 0}
+.info{background:var(--stamp-soft);border:1px solid #D4DDF5;border-radius:6px;padding:11px 14px;font-size:12px;color:#1B3A8F;line-height:1.6;margin:12px 0}
+.note{font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:8px}
+.empty{text-align:center;padding:42px 18px;color:var(--muted)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;z-index:90}
+.vflag{font-size:9px;letter-spacing:.05em;text-transform:uppercase;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:6px}
+.v-yes{background:var(--moss-soft);color:var(--moss)} .v-no{background:var(--brass-soft);color:var(--brass)} .v-mid{background:var(--stamp-soft);color:var(--stamp)}
+
+/* letterhead */
+.lh{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:40px 54px 54px;font-family:"Times New Roman",Times,serif;font-size:12pt;line-height:1.5;color:#000}
+.lh-top{text-align:center}
+.lh-firm{font-family:"Baskerville Old Face","Baskerville","Libre Baskerville",Georgia,serif;font-size:19pt;letter-spacing:.6px;line-height:1.15}
+.lh-tag{font-family:Arial,Helvetica,sans-serif;font-size:8pt;letter-spacing:2.6px;margin-top:3px}
+.lh-addr{font-family:Arial,Helvetica,sans-serif;font-size:8pt;letter-spacing:.7px;margin-top:2px;line-height:1.35}
+.lh-cols{display:grid;grid-template-columns:1.9fr 1.4fr 1.7fr;gap:8px;margin-top:9px;font-family:Arial,Helvetica,sans-serif;font-size:7.5pt;line-height:1.5}
+.lh-names div{white-space:nowrap}
+.lh-names sup{font-size:6pt}
+.lh-oc{margin-top:3px;letter-spacing:1px}
+.lh-oclabel{letter-spacing:1.4px;padding-left:14px}
+.lh-mid{text-align:center}
+.lh-offices{text-align:right}
+.lh-oname{letter-spacing:.8px;margin-top:3px}
+.lh-respond{font-style:italic;margin-top:4px}
+.lh-legend{display:flex;flex-wrap:wrap;gap:2px 16px;font-family:Arial,Helvetica,sans-serif;font-size:6.5pt;color:#222;margin-top:8px;justify-content:flex-end}
+.lh-legend sup{font-size:6pt}
+.lh-email{font-family:Arial,Helvetica,sans-serif;font-size:7.5pt;font-style:italic;margin-top:5px}
+.lh-rule{border-bottom:1.5px solid #000;margin:6px 0 0}
+.lh .body{margin-top:30px;white-space:pre-wrap}
+.hipaa{font-family:"Times New Roman",Times,serif;font-size:11pt;line-height:1.42;white-space:normal}
+.hipaa p{margin:9px 0}
+.h-title{text-align:center;font-weight:bold;text-decoration:underline;font-size:12pt;line-height:1.35;margin-bottom:16px}
+.fillin{display:inline-block;border-bottom:1px solid #000;min-width:190px}
+.h-items{width:100%;border-collapse:collapse;margin:6px 0 12px}
+.h-items td{padding:2px 0;font-size:10.5pt;border:none}
+.h-note{font-size:9.5pt;font-style:italic;margin-top:14px}
+.h-matter{font-size:8.5pt;color:#444;margin-top:20px;border-top:1px solid #999;padding-top:5px}
+@media print{
+  body{background:#fff} header.top,nav.tabs,.noprint{display:none!important}
+  main{max-width:none;padding:0} .lh{border:none;padding:0}
+}
+@media(max-width:820px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>GBR Matter Ops</h1>
+  <span class="firm">Gaul, Baratta &amp; Rosello, LLC</span>
+  <span class="sp"></span>
+  <span class="who mono" id="whoLbl"></span>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-p="dash" class="on">Dashboard</button>
+  <button data-p="intake">Intake</button>
+  <button data-p="matters">Matters</button>
+  <button data-p="deadlines">Deadlines</button>
+  <button data-p="discovery">Discovery</button>
+  <button data-p="records">Records</button>
+  <button data-p="letters">Letters</button>
+  <button data-p="billing">Billing</button>
+  <button data-p="tasks">Tasks</button>
+  <button data-p="directory">Directory</button>
+  <button data-p="settings">Settings</button>
+</nav>
+
+<main>
+<div id="draftBanner"></div>
+
+<!-- ══ DASHBOARD ══ -->
+<section class="panel on" id="p-dash">
+  <h2 class="sec">Dashboard</h2>
+  <p class="sub" id="dashSub"></p>
+  <div class="tiles" id="tiles"></div>
+  <div class="card">
+    <h3>Needs attention</h3>
+    <div class="tw"><table><thead><tr>
+      <th style="min-width:250px">Matter</th><th>What</th><th>When</th><th>Days</th><th>Owner</th>
+    </tr></thead><tbody id="dashRows"></tbody></table></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Conflicts and data gaps</h3><div id="dashGaps"></div></div>
+    <div class="card"><h3>Stale files</h3><p class="note">No activity logged in 45 days.</p><div id="dashStale"></div></div>
+  </div>
+</section>
+
+<!-- ══ INTAKE ══ -->
+<section class="panel" id="p-intake">
+  <h2 class="sec">Document intake</h2>
+  <p class="sub">Drop a notice or order. It reads the caption, docket, and dates, then computes every downstream deadline for you to confirm.</p>
+  <div id="keyBanner"></div>
+  <div id="drop" tabindex="0" role="button">
+    <h3>Drop notices and orders here</h3>
+    <p>Track assignment notices, orders extending discovery, arbitration and trial notices, complaints. Several at once is fine.</p>
+    <p class="note">PDF · PNG · JPG</p>
+    <input type="file" id="picker" multiple accept="application/pdf,image/png,image/jpeg" hidden>
+  </div>
+  <div id="queue"></div>
+  <div class="row" style="margin-top:14px">
+    <button id="btnManual">Add matter by hand</button>
+    <span class="sp"></span>
+    <button id="btnKey">API key</button>
+  </div>
+  <div class="info" style="margin-top:16px">
+    <strong>How reading works.</strong> Opened inside Claude, this borrows Claude's connection and needs no setup.
+    Run from a file on your own machine, it needs the firm's Anthropic API key entered once per computer.
+    Everything else — the deadline engine, letters, exports, add by hand — works either way.
+  </div>
+</section>
+
+<!-- ══ MATTERS ══ -->
+<section class="panel" id="p-matters">
+  <h2 class="sec">Matters</h2>
+  <p class="sub">Every open file. Defense files carry a JMG410 suffix; plaintiff files end in CJG.</p>
+  <div class="row" style="margin-bottom:12px">
+    <select class="t" id="fSide" style="width:150px">
+      <option value="">All sides</option><option value="defense">Defense</option><option value="plaintiff">Plaintiff</option>
+    </select>
+    <select class="t" id="fStatus" style="width:160px">
+      <option value="active">Active only</option><option value="">All statuses</option>
+      <option value="Settled">Settled</option><option value="Dismissed">Dismissed</option>
+    </select>
+    <select class="t" id="fOwner" style="width:150px"><option value="">All timekeepers</option></select>
+    <input class="t" id="fSearch" placeholder="Search caption, docket, carrier…" style="max-width:280px">
+    <span class="sp"></span>
+    <button id="btnNewMatter" class="primary">New matter</button>
+  </div>
+  <div class="tw"><table><thead><tr>
+    <th style="min-width:270px">Matter</th><th>Status</th><th>Track</th><th>Carrier</th>
+    <th>Orig DED</th><th>Curr DED</th><th>Days</th><th>File motion by</th><th>Arb</th><th>Trial</th><th></th>
+  </tr></thead><tbody id="matterRows"></tbody></table>
+  <div class="empty" id="matterEmpty" style="display:none">No matters match those filters.</div></div>
+  <div class="row" style="margin-top:12px">
+    <button id="btnCsv">Export .csv</button>
+    <button id="btnIcs">Export .ics</button>
+    <button id="btnJson">Save handoff file</button>
+    <button id="btnLoad">Open handoff file</button>
+    <input type="file" id="loader" accept="application/json" hidden>
+  </div>
+</section>
+
+<!-- ══ DEADLINES ══ -->
+<section class="panel" id="p-deadlines">
+  <h2 class="sec">Deadline engine</h2>
+  <p class="sub">New Jersey computations with rule cites. Weekends and court holidays roll forward per R. 1:3-1.</p>
+  <div class="card">
+    <h3>Calculator</h3>
+    <div class="grid3">
+      <div><label>Rule</label><select class="t" id="calcRule"></select></div>
+      <div><label>Trigger date</label><input type="date" id="calcFrom"></div>
+      <div><label>Track (where relevant)</label><select class="t" id="calcTrack">
+        <option value="">n/a</option><option value="I">I — 150 days</option><option value="II">II — 300 days</option>
+        <option value="III">III — 450 days</option><option value="IV">IV — 450 days, judge managed</option></select></div>
+    </div>
+    <div class="derived" id="calcOut"></div>
+  </div>
+  <div class="card">
+    <h3>Rule reference</h3>
+    <p class="note" style="margin-bottom:10px" id="ruleVerifyNote"></p>
+    <div class="tw"><table><thead><tr><th>Computation</th><th>Authority</th><th>Interval</th><th>Verification</th></tr></thead><tbody id="ruleRows"></tbody></table></div>
+  </div>
+  <div class="card">
+    <h3>Court holidays</h3>
+    <p class="note">Hardcoded through 2027. Add the next year each December or the rolling stops working.</p>
+    <div id="holidayList" class="mono" style="font-size:12px;line-height:2;margin-top:8px"></div>
+  </div>
+</section>
+
+<!-- ══ DISCOVERY ══ -->
+<section class="panel" id="p-discovery">
+  <h2 class="sec">Discovery ledger</h2>
+  <p class="sub">Served and received discovery with response dates computed from the service date.</p>
+  <div class="row" style="margin-bottom:12px">
+    <select class="t" id="discMatter" style="max-width:320px"></select>
+    <button id="btnNewDisc" class="primary">Log discovery</button>
+  </div>
+  <div class="tw"><table><thead><tr>
+    <th style="min-width:210px">Matter</th><th>Item</th><th>Direction</th><th>Served</th><th>Response due</th><th>Days</th><th>Status</th><th></th>
+  </tr></thead><tbody id="discRows"></tbody></table>
+  <div class="empty" id="discEmpty">Nothing logged yet.</div></div>
+</section>
+
+<!-- ══ RECORDS ══ -->
+<section class="panel" id="p-records">
+  <h2 class="sec">Records chase</h2>
+  <p class="sub">Provider requests on a 21 / 30 / 45 / 60-day escalation. Assigned per matter to the handling attorney.</p>
+  <div class="row" style="margin-bottom:12px">
+    <select class="t" id="recMatter" style="max-width:320px"></select>
+    <button id="btnNewRec" class="primary">Add provider request</button>
+  </div>
+  <div class="tw"><table><thead><tr>
+    <th style="min-width:200px">Matter</th><th>Provider</th><th>Requested</th><th>Stage</th><th>Next follow-up</th><th>Days</th><th>Status</th><th></th>
+  </tr></thead><tbody id="recRows"></tbody></table>
+  <div class="empty" id="recEmpty">No outstanding requests.</div></div>
+</section>
+
+<!-- ══ LETTERS ══ -->
+<section class="panel" id="p-letters">
+  <h2 class="sec">Letters</h2>
+  <p class="sub">Generated on firm letterhead. Everything lands in the approval queue before it goes out.</p>
+  <div class="info"><strong>Conformed to the firm template.</strong> Letterhead follows LETTERHEAD - NEW 01/05/2026, and the HIPAA authorization reproduces the operative form including the reproductive-health line. Per RPC 7.4(b) the Civil Trial Attorney certification is attributed to Joseph M. Gaul, Jr. alone. Print to PDF for a clean copy - screen and print use the same layout.
+  <br><br><strong>Watch item, checked 9/1/2026:</strong> the form's "within 30 days" HIPAA access line (45 CFR 164.524) is still current, but HHS has a proposed rule on its regulatory agenda — expected around November 2026 — that could shorten that window. Re-check this after Q4 2026.</div>
+  <div class="grid3" style="margin-bottom:14px">
+    <div><label>Matter</label><select class="t" id="ltrMatter"></select></div>
+    <div><label>Letter type</label><select class="t" id="ltrType"></select></div>
+    <div style="display:flex;align-items:flex-end;gap:8px">
+      <button class="primary" id="btnGenLtr" style="flex:1">Generate</button>
+      <button id="btnPrintLtr">Print</button>
+    </div>
+  </div>
+  <div id="ltrOut"></div>
+  <div class="card" style="margin-top:16px">
+    <h3>Pending CJG approval <span class="pill p-amber" id="apprCount">0</span></h3>
+    <p class="note">Nothing leaves the office until it is approved here. This is the continuity gate if someone leaves.</p>
+    <div class="tw" style="margin-top:10px"><table><thead><tr><th>Matter</th><th>Letter</th><th>Drafted by</th><th>Drafted</th><th></th></tr></thead><tbody id="apprRows"></tbody></table>
+    <div class="empty" id="apprEmpty">Queue is clear.</div></div>
+  </div>
+</section>
+
+<!-- ══ BILLING ══ -->
+<section class="panel" id="p-billing">
+  <h2 class="sec">Pre-bill scrub</h2>
+  <p class="sub">Paste time entries. Flags what a carrier auditor cuts before the invoice goes out.</p>
+  <div class="grid2">
+    <div>
+      <label>Entries — one per line, format: date | timekeeper | hours | narrative</label>
+      <textarea class="t" id="billIn" rows="13" placeholder="08/11/2026 | CJG | 1.4 | Review file and attend to same
+08/11/2026 | JAD | 0.3 | Conference with CJG re: strategy
+08/11/2026 | JEZ | 0.5 | Scan and file correspondence"></textarea>
+      <div class="row" style="margin-top:9px">
+        <button class="primary" id="btnScrub">Run scrub</button>
+        <button id="btnScrubClear">Clear</button>
+      </div>
+    </div>
+    <div><div id="billOut"><div class="empty">Paste entries and run the scrub.</div></div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>What this checks</h3>
+    <div class="grid2" id="billRules"></div>
+  </div>
+</section>
+
+<!-- ══ TASKS ══ -->
+<section class="panel" id="p-tasks">
+  <h2 class="sec">Task board</h2>
+  <p class="sub">Delegated work by owner. Each attorney carries their own files; Jordan supports discovery and motion practice.</p>
+  <div class="row" style="margin-bottom:12px">
+    <button id="btnNewTask" class="primary">New task</button>
+    <select class="t" id="taskOwnerFilter" style="width:180px"><option value="">All owners</option></select>
+    <span class="sp"></span><span class="note" id="taskCount"></span>
+  </div>
+  <div id="taskBoard" class="grid3"></div>
+</section>
+
+<!-- ══ DIRECTORY ══ -->
+<section class="panel" id="p-directory">
+  <h2 class="sec">Directory</h2>
+  <p class="sub">Firm, timekeepers, carriers, and venues.</p>
+  <div class="grid2">
+    <div class="card"><h3>Offices</h3><div id="dirOffices"></div></div>
+    <div class="card"><h3>Timekeepers</h3><div class="tw"><table><thead><tr><th>Initials</th><th>Name</th><th>Role</th><th>Owns</th></tr></thead><tbody id="dirPeople"></tbody></table></div></div>
+    <div class="card"><h3>Carriers</h3><div class="tw"><table><thead><tr><th>Carrier</th><th>Status</th><th>Contact</th></tr></thead><tbody id="dirCarriers"></tbody></table></div></div>
+    <div class="card"><h3>Venue codes</h3><div id="dirVenues" class="mono" style="font-size:12px;line-height:2"></div></div>
+  </div>
+</section>
+
+<!-- ══ SETTINGS ══ -->
+<section class="panel" id="p-settings">
+  <h2 class="sec">Settings</h2>
+  <p class="sub">Per-machine configuration. Nothing here travels in a handoff file.</p>
+  <div class="card">
+    <h3>Who is using this copy</h3>
+    <div class="grid2">
+      <div><label>Timekeeper initials</label><select class="t" id="setWho"></select></div>
+      <div><label>Anthropic API key</label><input type="password" id="setKey" placeholder="sk-ant-..."></div>
+    </div>
+    <p class="note">The key is stored in this browser on this machine only. It is never written into an export, so sharing your matter list never shares the key. Each person enters their own.</p>
+    <div class="row" style="margin-top:11px"><button class="primary" id="btnSaveSet">Save</button><button id="btnClearKey">Remove key</button></div>
+  </div>
+  <div class="card">
+    <h3>Data</h3>
+    <p class="note">This copy stores matters in this browser. To work from the same list, one person exports a handoff file and the other opens it — matching dockets update in place rather than duplicating.</p>
+    <div class="row" style="margin-top:11px">
+      <button id="btnJson2">Save handoff file</button>
+      <button id="btnLoad2">Open handoff file</button>
+      <button class="danger" id="btnWipe">Erase everything</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Standing rules baked into this app</h3>
+    <ul style="font-size:13px;line-height:1.9;padding-left:19px" id="setRules"></ul>
+  </div>
+</section>
+</main>
+<div id="modalHost"></div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const K_DATA='gbr-ops-v1', K_KEY='gbr-ops-key', K_WHO='gbr-ops-who';
+let DB={matters:[],discovery:[],records:[],tasks:[],letters:[],log:[]};
+let APIKEY='', WHO='CJG';
+const TODAY=sod(new Date());
+
+/* ══════════ FIRM ══════════ */
+const FIRM={
+  name:'GAUL, BARATTA & ROSELLO, LLC', short:'GBR',
+  tagline:'ATTORNEYS AT LAW',
+  street:'100 HANOVER AVENUE', city:'CEDAR KNOLLS, NJ  07927',
+  phone:'(973) 539-5900', fax:'FAX (973) 539-0059',
+  respond:'Please respond to Cedar Knolls',
+  otherOffices:[
+    {label:'JERSEY CITY OFFICE', l1:'239 Washington Street, Suite 303', l2:'Jersey City, NJ  07302'},
+    {label:'NEW YORK OFFICE',    l1:'280 Madison Avenue, Suite 810',    l2:'New York, NY  10016'}
+  ],
+  legend:[
+    {m:'*', t:'Certified by the Supreme Court of New Jersey as a Civil Trial Attorney'},
+    {m:'\u2020', t:'also admitted in Pennsylvania'},
+    {m:'^', t:'also admitted in New York'}
+  ]
+};
+/* Order and marks taken verbatim from LETTERHEAD - NEW 01/05/2026.
+   RPC 7.4: the Civil Trial Attorney certification belongs to Joseph M. Gaul, Jr.
+   alone and is never attributed to Corey or to the firm.                        */
+const PEOPLE=[
+  {i:'JMG',n:'Joseph M. Gaul, Jr.', lh:'JOSEPH M. GAUL, JR.', mark:'*',        r:'Partner',   o:'Certified by the Supreme Court of New Jersey as a Civil Trial Attorney', onLH:true},
+  {i:'JAB',n:'Jessica A. Baratta',  lh:'JESSICA A. BARATTA',  mark:'\u2020',   r:'Partner',   o:'Own caseload', onLH:true},
+  {i:'LFR',n:'Lawrence F. Rosello', lh:'LAWRENCE F. ROSELLO', mark:'',         r:'Partner',   o:'Own caseload', onLH:true},
+  {i:'CJG',n:'Corey J. Gaul',       lh:'COREY J. GAUL',       mark:'^',        r:'Managing partner', o:'Own caseload; trials, strategy, carrier relationships', email:'cgaul@gaul-law.com', onLH:true},
+  {i:'SMB',n:'Shannon Burke',       lh:'SHANNON BURKE',       mark:'',         r:'Attorney',  o:'Own caseload', onLH:true},
+  {i:'JEZ',n:'Joshua E. Zoeller',   lh:'JOSHUA E. ZOELLER',   mark:'^',        r:'Attorney',  o:'Own caseload', onLH:true},
+  {i:'JAD',n:'Jordan A. Davis',     lh:'JORDAN A. DAVIS',     mark:'',         r:'Associate', o:'Discovery and motion practice', onLH:true},
+  {i:'JSC',n:'Julie Scalley',       lh:'',                    mark:'',         r:'Legal secretary', o:'Calendaring, intake, correspondence', onLH:false}
+];
+/* Named claims contacts are relationship data, not firm letterhead — like
+   matter data, they don't belong hardcoded into the app everyone gets a
+   copy of. Add real contacts locally, or bring them in via a handoff file. */
+const CARRIERS=[
+  {n:'Travelers',      s:'Panel',    c:''},
+  {n:'Liberty Mutual', s:'Panel',    c:''},
+  {n:'Hanover',        s:'Pursuing', c:''},
+  {n:'AmTrust',        s:'Pursuing', c:''},
+  {n:'Hartford',       s:'Pursuing', c:''}
+];
+const VENUES={ESX:'Essex',BER:'Bergen',HUD:'Hudson',UNN:'Union',MRS:'Morris',PAS:'Passaic',MID:'Middlesex',
+  MON:'Monmouth',OCN:'Ocean',SOM:'Somerset',SSX:'Sussex',WRN:'Warren',HNT:'Hunterdon',CAM:'Camden',
+  BUR:'Burlington',MER:'Mercer',CPM:'Cape May',ATL:'Atlantic',GLO:'Gloucester',SAL:'Salem',CUM:'Cumberland',
+  NY:'New York (Supreme)',USDC:'U.S. District Court'};
+
+const STANDING=[
+  'A time entry is drafted after every billable client-matter task. Timekeeper CJG unless stated otherwise, no UTBMS codes, hours as good-faith estimates. Nothing is drafted for internal firm operations.',
+  'Every case law and court rule citation carries a verification flag. No unverified cite is filing-ready without a Westlaw or Lexis check.',
+  'Always "IME" — Independent Medical Examination. Never the plaintiff-preferred "DME".',
+  'The Civil Trial Attorney certification belongs to Joe Gaul by name. It is never attributed to Corey or to the firm, per RPC 7.4.',
+  'Time is recorded in 0.1 increments with defensible, carrier-conscious narratives.',
+  'Defense files carry a JMG410 suffix. Plaintiff files end in CJG.'
+];
+
+/* ══════════ DATES ══════════ */
+function sod(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+function pd(s){if(!s)return null;const m=String(s).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return null;const d=new Date(+m[1],+m[2]-1,+m[3]);return isNaN(d)?null:d;}
+function iso(d){return d?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'):'';}
+function fmt(d){return d?String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+'/'+String(d.getFullYear()).slice(2):'—';}
+function fmtLong(d){if(!d)return '';const M=['January','February','March','April','May','June','July','August','September','October','November','December'];return M[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}
+function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+/* Calendar-year/month arithmetic — NOT the same as adding a fixed day count.
+   A statute of limitations measured in "2 years" or "6 months" must land on
+   the same month/day N years or months later; a fixed-day approximation
+   (e.g. 730 days for "2 years") silently drifts a day off whenever a leap
+   day falls inside the span. Always use these for statutory periods. */
+function addYears(d,n){const x=new Date(d);x.setFullYear(x.getFullYear()+n);return x;}
+function addMonths(d,n){const x=new Date(d);x.setMonth(x.getMonth()+n);return x;}
+function diff(a,b){return Math.round((sod(b)-sod(a))/864e5);}
+
+/* 2026–2027 court year checked against the AOC Order, Schedule of 2026-2027
+   Legal Holidays and Court Recesses (njcourts.gov), 8/11/2026.
+   2027–2028 entries are marked ESTIMATED below. As of this build (9/1/2026)
+   it was not possible to confirm from this environment whether the AOC has
+   already published the 2027-2028 order — check njcourts.gov directly
+   (Attorneys → Calendars & Schedules) before relying on those dates.       */
+const HOLIDAYS={
+ /* 2025–2026 court year, now past */
+ '2026-01-01':"New Year's Day",'2026-01-19':'Martin Luther King, Jr. Day','2026-02-16':"Presidents' Day",
+ '2026-04-03':'Good Friday','2026-05-25':'Memorial Day','2026-06-19':'Juneteenth',
+ /* 2026–2027 court year — verified */
+ '2026-07-03':'Independence Day (observed)','2026-09-07':'Labor Day','2026-10-12':'Columbus Day',
+ '2026-11-03':'Election Day','2026-11-11':'Veterans Day',
+ '2026-11-23':'Statewide Judicial College','2026-11-24':'Statewide Judicial College','2026-11-25':'Statewide Judicial College',
+ '2026-11-26':'Thanksgiving','2026-12-25':'Christmas Day',
+ '2026-12-28':'Court recess','2026-12-29':'Court recess','2026-12-30':'Court recess','2026-12-31':'Court recess',
+ '2027-01-01':"New Year's Day",'2027-01-18':'Martin Luther King, Jr. Day','2027-02-15':"Presidents' Day",
+ '2027-03-26':'Good Friday','2027-05-31':'Memorial Day','2027-06-18':'Juneteenth (observed)',
+ /* 2027–2028 court year — ESTIMATED, not yet verified */
+ '2027-07-05':'Independence Day (observed) — estimated','2027-09-06':'Labor Day — estimated',
+ '2027-10-11':'Columbus Day — estimated','2027-11-02':'Election Day — estimated',
+ '2027-11-11':'Veterans Day — estimated','2027-11-25':'Thanksgiving — estimated',
+ '2027-12-24':'Christmas Day (observed) — estimated'
+};
+function isClosed(d){return d.getDay()===0||d.getDay()===6||!!HOLIDAYS[iso(d)];}
+/* R. 1:3-1 — a period ending on a weekend or court holiday runs to the next business day */
+function roll(d){let x=new Date(d),g=0;while(isClosed(x)&&g++<40)x=add(x,1);return x;}
+/* Backward-computed dates (motion filing) move EARLIER, never later */
+function rollBack(d){let x=new Date(d),g=0;while(isClosed(x)&&g++<40)x=add(x,-1);return x;}
+/* Motions are returnable on Fridays; skip Fridays the courts are closed */
+function returnDate(ded){if(!ded)return null;let x=add(ded,-1),g=0;while((x.getDay()!==5||HOLIDAYS[iso(x)])&&g++<400)x=add(x,-1);return x;}
+
+const TRACK_DAYS={I:150,II:300,III:450,IV:450};
+
+/* ══════════ RULES ══════════
+   `v` marks verification state:
+     'pub' — a person on the team checked this against the official Rules
+             Governing the Courts of New Jersey / N.J.S.A. text directly.
+     'sec' — checked 9/1/2026 against secondary legal-research sources
+             (search-engine snippets of aggregators, not the official PDF,
+             and not a citator) — see note below the table. Treat as a
+             strong "probably right" signal, not a substitute for looking
+             the rule up before something outcome-determinative rides on it.
+     'unv' — not checked in this app at all.
+   RULES_LAST_REVIEWED (below) drives the summary line and should move
+   forward whenever this table gets a fresh pass.                          */
+const RULES_LAST_REVIEWED='9/1/2026';
+const RULES=[
+ {k:'answer',      t:'Answer to complaint',                a:'R. 4:6-1(a)',            d:35,  from:'Service of summons and complaint', v:'sec'},
+ {k:'ded',         t:'Discovery end date by track',        a:'R. 4:24-1(a)',           d:null,from:'First defendant answering — or 90 days after the first defendant is served, if earlier', v:'sec', track:true,
+   note:'The clock runs from whichever of those two triggers comes first — a defendant who delays answering does not push the DED out past the 90-day service trigger.'},
+ {k:'rog',         t:'Answers to interrogatories',         a:'R. 4:17-4(b)',           d:60,  from:'Service of interrogatories', v:'sec'},
+ {k:'ntp',         t:'Response to notice to produce',      a:'R. 4:18-1(b)',           d:35,  from:'Service of the notice', v:'sec'},
+ {k:'ntp50',       t:'Response — floor for a served defendant', a:'R. 4:18-1(b)',      d:50,  from:'Service of the summons and complaint on that defendant', v:'sec',
+   note:'50-day floor runs from that defendant’s own service of process, not specifically from being served "together with" the notice to produce.'},
+ {k:'motfile',     t:'Motion — file and serve',            a:'R. 1:6-3(a)',            d:-16, from:'Return date', v:'pub'},
+ {k:'motopp',      t:'Opposition to motion',               a:'R. 1:6-3(a)',            d:-8,  from:'Return date', v:'sec'},
+ {k:'motreply',    t:'Reply on motion',                    a:'R. 1:6-3(a)',            d:-4,  from:'Return date', v:'sec',
+   note:'Only 4 days of lead time. This calculator counts all calendar days and rolls only the final date under R. 1:3-1; one source suggested periods under 7 days may exclude intervening weekends/holidays from the count itself instead, which this app does not implement — confirm timeliness independently given the short fuse.'},
+ {k:'crossmot',    t:'Cross-motion — file and serve',      a:'R. 1:6-3(b)',            d:-8,  from:'Return date', v:'sec',
+   note:'Corrected 9/1/2026: a cross-motion is filed and served WITH the opposition papers — the same 8-day deadline, not an independent 15-day schedule.'},
+ {k:'sjfile',      t:'Summary judgment — file and serve',  a:'R. 4:46-1',              d:-28, from:'Return date', v:'sec'},
+ {k:'sjopp',       t:'Summary judgment — opposition',      a:'R. 4:46-1',              d:-10, from:'Return date', v:'sec'},
+ {k:'sjlast',      t:'Summary judgment — latest return',   a:'R. 4:46-1',              d:-30, from:'Trial date', v:'sec'},
+ {k:'extmotion',   t:'Motion to extend discovery — file',  a:'R. 4:24-1(c) + R. 1:6-3(a)', d:null, from:'Discovery end date', v:'sec', special:'ext',
+   note:'The day count here is a practice convention (working back from the DED using the ordinary 16-day motion lead time), not a number the rule itself states. The only hard requirement is that the extension motion be filed — and, per case law, decided — before the discovery end date passes.'},
+ {k:'consent60',   t:'Consent extension of discovery',     a:'R. 4:24-1(c)',           d:60,  from:'Current discovery end date', v:'pub'},
+ {k:'denovo',      t:'Trial de novo after arbitration',    a:'R. 4:21A-6(b)(1)',       d:30,  from:'Filing of the arbitration award', v:'sec',
+   note:'A July 2025 rule amendment added a 10-day grace period available on a good-cause motion after the 30 days runs — do not treat 30 days as an absolute bar without checking for a pending grace application.'},
+ {k:'oj',          t:'Offer of judgment — latest service', a:'R. 4:58-1',              d:-20, from:'Trial date', v:'sec'},
+ {k:'appeal',      t:'Notice of appeal as of right',       a:'R. 2:4-1(a)',            d:45,  from:'Entry of final judgment', v:'sec'},
+ {k:'recon',       t:'Motion for reconsideration',         a:'R. 4:49-2',              d:20,  from:'Service of the order with notice of entry', v:'sec',
+   note:'Applies to final orders/judgments. An interlocutory order is reviewable "at any time" before final judgment under R. 4:42-2, not on this 20-day clock.'},
+ {k:'aom',         t:'Affidavit of merit',                 a:'N.J.S.A. 2A:53A-27',     d:60,  from:'Answer to the complaint', v:'sec', note:'Extendable by one additional 60 days (120 total) for good cause.'},
+ {k:'tcanotice',   t:'Tort Claims Act notice',             a:'N.J.S.A. 59:8-8',        d:90,  from:'Accrual of the claim', v:'sec'},
+ {k:'tcasuit',     t:'Earliest suit after TCA notice',     a:'N.J.S.A. 59:8-8',        from:'Service of the notice', v:'sec', special:'months', n:6,
+   note:'Statute says "six months," not "180 days" — computed here by calendar month, not a fixed day count.'},
+ {k:'solpi',       t:'Personal injury limitations',        a:'N.J.S.A. 2A:14-2',       from:'Accrual of the claim', v:'sec', special:'years', n:2,
+   note:'Computed by calendar year, not a fixed 730-day count (a day-count approximation silently drifts across leap years). Subject to the discovery rule and other tolling doctrines this calculator does not apply.'},
+ {k:'solcontract', t:'Contract limitations',               a:'N.J.S.A. 2A:14-1',       from:'Accrual of the claim', v:'sec', special:'years', n:6,
+   note:'Computed by calendar year, not a fixed 2190-day count, for the same leap-year reason as above.'},
+ {k:'solminor',    t:'Minor — limitations begins',         a:'N.J.S.A. 2A:14-21',      d:null,from:'18th birthday', v:'sec',
+   note:'Tolled during minority; two years from majority for an ordinary personal-injury claim. Does NOT govern child sexual abuse claims (N.J.S.A. 2A:14-2a/2A:14-2b — a much longer, separate track) or birth-injury medical malpractice (separate 13th-birthday rule) — route those to counsel, not this row.'},
+ {k:'subpoena',    t:'Subpoena duces tecum — compliance',  a:'R. 1:9-2',               d:null,from:'Date stated on the subpoena', v:'sec',
+   note:'No NJ rule sets a fixed statewide response period; comply by whatever date the subpoena itself states. R. 4:14-7(c) is a related but different rule — it requires a deposition document subpoena to be served at least 10 days before the deposition, which is a service deadline, not a response deadline.'}
+];
+
+/* ══════════ SEED ROSTER ══════════
+   Intentionally empty in the version distributed firm-wide. Real matter
+   data must never live in this file or in git — it loads only into each
+   person's own browser, by hand or via Settings → Open handoff file.
+   See matters/README.md and matter-ops/README.md for the handoff workflow. */
+function seed(){
+ return [];
+}
+function uid(){return 'x'+Math.random().toString(36).slice(2,10);}
+
+/* ══════════ STORAGE ══════════ */
+const Store={
+ async get(k){ if(window.storage){try{const r=await window.storage.get(k);return r?r.value:null}catch(e){}}
+   try{return localStorage.getItem(k)}catch(e){return null} },
+ async set(k,v){ if(window.storage){try{await window.storage.set(k,v);return true}catch(e){}}
+   try{localStorage.setItem(k,v);return true}catch(e){return false} }
+};
+async function save(){ const ok=await Store.set(K_DATA,JSON.stringify(DB));
+  if(!ok) toast('Could not save in this browser — use Save handoff file'); }
+async function boot(){
+  const raw=await Store.get(K_DATA);
+  if(raw){ try{ DB=Object.assign(DB,JSON.parse(raw)); }catch(e){} }
+  if(!DB.matters) DB.matters=seed();
+  APIKEY=(await Store.get(K_KEY))||'';
+  WHO=(await Store.get(K_WHO))||'CJG';
+  renderAll();
+}
+
+/* ══════════ DERIVATIONS ══════════ */
+function derive(m){
+  const o=pd(m.originalDED), c=pd(m.currentDED), ded=c||o;
+  const ret=returnDate(ded), file=ret?rollBack(add(ret,-16)):null;
+  return {ded,ret,file,
+    dDED: ded?diff(TODAY,ded):null,
+    dFile: file?diff(TODAY,file):null,
+    locked: !!(pd(m.arbitration)||pd(m.trial))};
+}
+function tone(n){ if(n===null||n===undefined) return 'grey'; if(n<0) return 'red'; if(n<=14) return 'amber'; return 'green'; }
+function isLive(m){ return m.status!=='Settled'&&m.status!=='Dismissed'; }
+function norm(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]+/g,'-').split('-')
+  .filter(Boolean).map(p=>/^\d+$/.test(p)?String(parseInt(p,10)):p).join(''); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function mById(id){ return DB.matters.find(m=>m.id===id); }
+function toast(m){ const t=document.createElement('div');t.className='toast';t.textContent=m;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2600); }
+
+/* ══════════ DASHBOARD ══════════ */
+function renderDash(){
+  const live=DB.matters.filter(isLive);
+  const items=[];
+  live.forEach(m=>{
+    const d=derive(m);
+    if(d.file) items.push({m,what:'File motion to extend discovery',date:d.file,days:d.dFile,owner:m.owner,kind:'ext'});
+    if(d.ded)  items.push({m,what:'Discovery end date',date:d.ded,days:d.dDED,owner:m.owner,kind:'ded'});
+    const a=pd(m.arbitration); if(a) items.push({m,what:'Arbitration',date:a,days:diff(TODAY,a),owner:m.owner,kind:'arb'});
+    const t=pd(m.trial); if(t) items.push({m,what:'Trial',date:t,days:diff(TODAY,t),owner:m.owner,kind:'trial'});
+    const s=pd(m.sol); if(s) items.push({m,what:'Statute of limitations',date:s,days:diff(TODAY,s),owner:m.owner,kind:'sol'});
+  });
+  DB.records.filter(r=>r.status!=='Received').forEach(r=>{
+    const n=pd(r.nextFollowUp); const m=mById(r.matterId);
+    if(n&&m) items.push({m,what:'Records follow-up — '+r.provider,date:n,days:diff(TODAY,n),owner:m.owner,kind:'rec'});
+  });
+  DB.discovery.filter(d=>d.status!=='Served'&&d.status!=='Complete').forEach(x=>{
+    const n=pd(x.dueDate); const m=mById(x.matterId);
+    if(n&&m) items.push({m,what:x.item+' due',date:n,days:diff(TODAY,n),owner:m.owner,kind:'disc'});
+  });
+  DB.tasks.filter(t=>!t.done&&t.due).forEach(t=>{
+    const m=mById(t.matterId);
+    items.push({m:m||{name:t.title,docket:'',file:''},what:'Task — '+t.title,date:pd(t.due),days:diff(TODAY,pd(t.due)),owner:t.owner,kind:'task'});
+  });
+  items.sort((a,b)=>a.days-b.days);
+
+  const overdue=items.filter(i=>i.days<0), soon=items.filter(i=>i.days>=0&&i.days<=14);
+  const stale=live.filter(m=>{const l=pd(m.lastActivity);return l&&diff(l,TODAY)>45;});
+  const recs=DB.records.filter(r=>r.status!=='Received').length;
+
+  $('#dashSub').textContent=`${live.length} live matters · ${DB.matters.length} on the books · ${fmtLong(TODAY)}`;
+  $('#tiles').innerHTML=[
+    ['red',overdue.length,'Overdue'],['amber',soon.length,'Next 14 days'],
+    ['',live.filter(m=>m.side==='defense').length,'Defense'],['',live.filter(m=>m.side==='plaintiff').length,'Plaintiff'],
+    ['amber',recs,'Records open'],['red',stale.length,'Stale files'],
+    ['green',DB.tasks.filter(t=>!t.done).length,'Open tasks'],
+    ['amber',DB.letters.filter(l=>l.status==='Pending').length,'Letters pending']
+  ].map(([c,n,l])=>`<div class="tile ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+
+  const show=items.filter(i=>i.days<=30).slice(0,40);
+  $('#dashRows').innerHTML= show.length? show.map(i=>`<tr>
+    <td><div class="cn">${esc(i.m.name)}</div><div class="meta mono">${esc(i.m.docket||'no docket')}${i.m.file?' · '+esc(i.m.file):''}</div></td>
+    <td>${esc(i.what)}</td><td class="mono">${fmt(i.date)}</td>
+    <td><span class="num c-${tone(i.days)}">${i.days}</span></td>
+    <td><span class="pill p-grey">${esc(i.owner||'—')}</span></td></tr>`).join('')
+    : `<tr><td colspan="5" class="empty">Nothing due in the next 30 days.</td></tr>`;
+
+  const gaps=[];
+  DB.matters.filter(isLive).forEach(m=>{
+    if(m.notes&&/CONFLICT/i.test(m.notes)) gaps.push([m.name,'Conflicting dates recorded','red']);
+    if(!m.docket&&m.status!=='Pre-suit') gaps.push([m.name,'No docket number','amber']);
+    if(m.side==='defense'&&!m.originalDED&&!m.currentDED&&m.status==='Active') gaps.push([m.name,'No DED recorded','amber']);
+    if(m.side==='plaintiff'&&!m.sol&&!m.docket) gaps.push([m.name,'No limitations date and no docket','amber']);
+    if(m.side==='defense'&&!m.carrier&&m.status==='Active') gaps.push([m.name,'No carrier recorded','grey']);
+  });
+  $('#dashGaps').innerHTML= gaps.length? gaps.slice(0,14).map(([n,g,c])=>
+    `<div style="display:flex;gap:9px;padding:6px 0;border-bottom:1px solid var(--rule2);font-size:12.5px">
+      <span class="pill p-${c}">${c==='red'?'Fix':'Gap'}</span>
+      <span style="flex:1"><strong>${esc(n)}</strong><br><span class="note">${esc(g)}</span></span></div>`).join('')
+    : '<p class="note">Nothing flagged.</p>';
+
+  $('#dashStale').innerHTML= stale.length? stale.map(m=>
+    `<div style="padding:6px 0;border-bottom:1px solid var(--rule2);font-size:12.5px">
+      <strong>${esc(m.name)}</strong><span class="note"> — last touched ${fmt(pd(m.lastActivity))}</span></div>`).join('')
+    : '<p class="note">Everything touched inside 45 days.</p>';
+}
+
+/* ══════════ MATTERS ══════════ */
+function filtered(){
+  const side=$('#fSide').value, st=$('#fStatus').value, ow=$('#fOwner').value,
+        q=$('#fSearch').value.trim().toLowerCase();
+  return DB.matters.filter(m=>{
+    if(side&&m.side!==side) return false;
+    if(st==='active'&&!isLive(m)) return false;
+    if(st&&st!=='active'&&m.status!==st) return false;
+    if(ow&&m.owner!==ow) return false;
+    if(q&&!(`${m.name} ${m.docket} ${m.file} ${m.carrier} ${m.notes}`.toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a,b)=>{
+    const A=derive(a).file,B=derive(b).file;
+    if(A&&B) return A-B; if(A) return -1; if(B) return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+function ladder(d){
+  if(!d.ded||!d.file) return '';
+  const span=Math.max(diff(d.file,d.ded),1);
+  const rp=Math.min(100,Math.max(0,diff(d.file,d.ret)/span*100));
+  const fill=Math.min(100,Math.max(0,diff(d.file,TODAY)/span*100));
+  return `<div class="ladder"><div class="tr"><div class="fl" style="width:${fill}%"></div>
+    <div class="tk" style="left:0"></div><div class="tk r" style="left:${rp}%"></div>
+    <div class="tk d" style="left:calc(100% - 2px)"></div></div>
+    <div class="lb"><span><b>${fmt(d.file)}</b>file</span><span><b>${fmt(d.ret)}</b>return</span><span><b>${fmt(d.ded)}</b>DED</span></div></div>`;
+}
+function renderMatters(){
+  const rows=filtered();
+  $('#matterEmpty').style.display=rows.length?'none':'block';
+  $('#matterRows').innerHTML=rows.map(m=>{
+    const d=derive(m);
+    const sp={Active:'p-green','Trial listed':'p-amber','Pre-suit':'p-blue',Settled:'p-grey',Dismissed:'p-grey'}[m.status]||'p-grey';
+    return `<tr>
+      <td><div class="cn">${esc(m.name)}</div>
+        <div class="meta mono">${esc(m.docket||'no docket')}${m.venue?' · '+esc(m.venue):''} · ${esc(m.file)}</div>
+        ${ladder(d)}
+        ${m.notes?`<div class="meta" style="max-width:330px;margin-top:4px">${esc(m.notes.slice(0,150))}${m.notes.length>150?'…':''}</div>`:''}</td>
+      <td><span class="pill ${sp}">${esc(m.status)}</span>${m.side==='plaintiff'?'<div class="meta">plaintiff</div>':''}</td>
+      <td class="mono">${esc(m.track||'—')}</td>
+      <td>${esc(m.carrier||'—')}${m.adjuster?`<div class="meta">${esc(m.adjuster)}</div>`:''}</td>
+      <td class="mono">${fmt(pd(m.originalDED))}</td>
+      <td class="mono">${fmt(pd(m.currentDED))}</td>
+      <td><span class="num c-${tone(d.dDED)}">${d.dDED===null?'—':d.dDED}</span></td>
+      <td class="mono"><strong class="c-${tone(d.dFile)}">${fmt(d.file)}</strong>
+        ${d.ret?`<div class="meta">ret ${fmt(d.ret)}</div>`:''}
+        ${d.locked?'<div class="meta c-amber">exceptional circs</div>':''}</td>
+      <td class="mono">${fmt(pd(m.arbitration))}</td>
+      <td class="mono">${fmt(pd(m.trial))}</td>
+      <td><button class="sm" data-edit="${m.id}">Open</button></td></tr>`;
+  }).join('');
+  $$('[data-edit]').forEach(b=>b.onclick=()=>openMatter(mById(b.dataset.edit)));
+}
+
+/* ══════════ MATTER EDITOR ══════════ */
+function openMatter(m){
+  const isNew=!m;
+  if(isNew) m={id:uid(),side:'defense',name:'',docket:'',venue:'',file:'',status:'Active',owner:WHO,
+    carrier:'',claim:'',adjuster:'',judge:'',track:'II',originalDED:'',currentDED:'',sol:'',
+    consent:'',motion:'',records:'',depo:'',ime:'',arbitration:'',trial:'',notes:'',lastActivity:iso(TODAY)};
+  const sel=(v,opts)=>opts.map(o=>`<option${o===v?' selected':''}>${o}</option>`).join('');
+  $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal">
+    <div class="mh"><h3>${isNew?'New matter':esc(m.name)}</h3>
+      <div class="s">${isNew?'Defense files take a JMG410 suffix; plaintiff files end in CJG.':esc(m.file)+' · '+esc(m.docket||'no docket')}</div></div>
+    <div class="mb">
+      <div class="grid2">
+        <div class="full"><label>Caption</label><input class="t" id="e_name" value="${esc(m.name)}"></div>
+        <div><label>Docket</label><input id="e_docket" value="${esc(m.docket)}"></div>
+        <div><label>Venue</label><input id="e_venue" value="${esc(m.venue)}"></div>
+        <div><label>Our file number</label><input id="e_file" value="${esc(m.file)}"></div>
+        <div><label>Side</label><select class="t" id="e_side">${sel(m.side,['defense','plaintiff'])}</select></div>
+        <div><label>Status</label><select class="t" id="e_status">${sel(m.status,['Active','Trial listed','Pre-suit','Settled','Dismissed'])}</select></div>
+        <div><label>Handling timekeeper</label><select class="t" id="e_owner">${PEOPLE.map(p=>`<option${p.i===m.owner?' selected':''}>${p.i}</option>`).join('')}</select></div>
+        <div><label>Track</label><select class="t" id="e_track">${sel(m.track,['I','II','III','IV'])}</select></div>
+        <div><label>Judge</label><input class="t" id="e_judge" value="${esc(m.judge)}"></div>
+        <div><label>Carrier</label><input class="t" id="e_carrier" value="${esc(m.carrier)}" list="carrierList"></div>
+        <div><label>Claim number</label><input id="e_claim" value="${esc(m.claim)}"></div>
+        <div><label>Adjuster</label><input class="t" id="e_adjuster" value="${esc(m.adjuster)}"></div>
+        <div><label>Original DED</label><input type="date" id="e_oded" value="${m.originalDED}"></div>
+        <div><label>Current DED</label><input type="date" id="e_cded" value="${m.currentDED}"></div>
+        <div><label>Arbitration</label><input type="date" id="e_arb" value="${m.arbitration}"></div>
+        <div><label>Trial</label><input type="date" id="e_trial" value="${m.trial}"></div>
+        <div><label>Limitations date (plaintiff)</label><input type="date" id="e_sol" value="${m.sol||''}"></div>
+        <div><label>60-day consent</label><select class="t" id="e_consent">${sel(m.consent,['','Not used','Y','Requested','Refused','N/A'])}</select></div>
+        <div><label>Motion to extend</label><select class="t" id="e_motion">${sel(m.motion,['','Not filed','Ours — filed/pending','Co-def motion pending','Granted','Denied','N/A'])}</select></div>
+        <div><label>Medical records</label><select class="t" id="e_records">${sel(m.records,['','Outstanding','Partial','Complete','Authorizations sent','N/A'])}</select></div>
+        <div><label>Plaintiff deposition</label><input class="t" id="e_depo" value="${esc(m.depo)}" placeholder="date or Taken"></div>
+        <div><label>IME</label><input class="t" id="e_ime" value="${esc(m.ime)}" placeholder="date or scheduled"></div>
+        <div class="full"><label>Notes</label><textarea class="t" id="e_notes" rows="3">${esc(m.notes)}</textarea></div>
+      </div>
+      <div class="derived"><h4>Computed</h4><div id="e_calc"></div></div>
+    </div>
+    <div class="mf">
+      ${isNew?'':'<button class="danger" id="e_del">Delete</button>'}
+      <span class="sp"></span><button id="e_cancel">Cancel</button>
+      <button class="primary" id="e_save">${isNew?'Add matter':'Save'}</button>
+    </div></div></div>
+    <datalist id="carrierList">${CARRIERS.map(c=>`<option value="${c.n}">`).join('')}</datalist>`;
+
+  const rc=()=>{
+    const t={originalDED:$('#e_oded').value,currentDED:$('#e_cded').value,
+             arbitration:$('#e_arb').value,trial:$('#e_trial').value};
+    const d=derive(t); const R=(a,b)=>`<div class="r"><span>${a}</span><span class="mono">${b}</span></div>`;
+    let h='';
+    if(d.ded){
+      h+=R('Operative DED',fmt(d.ded)+' · '+d.dDED+' days');
+      h+=R('Motion return date',fmt(d.ret)+' — last Friday before the DED');
+      h+=R('File and serve by','<strong>'+fmt(d.file)+'</strong> · '+d.dFile+' days');
+      if(d.dFile<0) h+=R('<span class="c-red">Window closed</span>','<span class="c-red">Consent stipulation or ex parte order shortening time</span>');
+      if(d.locked) h+=R('<span class="c-amber">Exceptional circumstances</span>','<span class="c-amber">R. 4:24-1(c) — a date is already fixed</span>');
+      const cons=$('#e_consent').value;
+      if(cons!=='Y') h+=R('60-day consent available','Stipulate to '+fmt(add(d.ded,60))+' — no 16-day lead required');
+    } else h+=R('Operative DED','Enter a DED to compute the filing deadline');
+    const s=pd($('#e_sol').value); if(s) h+=R('Limitations date',fmt(s)+' · '+diff(TODAY,s)+' days');
+    $('#e_calc').innerHTML=h;
+  };
+  ['e_oded','e_cded','e_arb','e_trial','e_sol','e_consent'].forEach(i=>$('#'+i).addEventListener('input',rc));
+  rc();
+
+  $('#e_cancel').onclick=()=>$('#modalHost').innerHTML='';
+  $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  if(!isNew) $('#e_del').onclick=async()=>{
+    if(!confirm('Delete '+m.name+'? This cannot be undone.')) return;
+    DB.matters=DB.matters.filter(x=>x.id!==m.id); await save(); renderAll(); $('#modalHost').innerHTML='';toast('Deleted');
+  };
+  $('#e_save').onclick=async()=>{
+    const g=i=>$('#e_'+i).value;
+    Object.assign(m,{name:g('name').trim()||'Untitled',docket:g('docket').trim(),venue:g('venue').trim().toUpperCase(),
+      file:g('file').trim(),side:g('side'),status:g('status'),owner:g('owner'),track:g('track'),judge:g('judge').trim(),
+      carrier:g('carrier').trim(),claim:g('claim').trim(),adjuster:g('adjuster').trim(),
+      originalDED:g('oded'),currentDED:g('cded'),arbitration:g('arb'),trial:g('trial'),sol:g('sol'),
+      consent:g('consent'),motion:g('motion'),records:g('records'),depo:g('depo').trim(),ime:g('ime').trim(),
+      notes:g('notes').trim(),lastActivity:iso(TODAY)});
+    if(isNew) DB.matters.push(m);
+    await save(); renderAll(); $('#modalHost').innerHTML=''; toast(isNew?'Matter added':'Saved');
+  };
+}
+
+/* ══════════ DEADLINE CALCULATOR ══════════ */
+function ruleInterval(r){
+  if(r.special==='years') return r.n+' year'+(r.n>1?'s':'')+' after';
+  if(r.special==='months') return r.n+' month'+(r.n>1?'s':'')+' after';
+  if(r.d===null) return r.track?'by track':'special';
+  return r.d<0?Math.abs(r.d)+' days before':r.d+' days after';
+}
+function vBadge(v){
+  if(v==='pub') return {c:'v-yes',t:'checked — official text'};
+  if(v==='sec') return {c:'v-mid',t:'checked — secondary source'};
+  return {c:'v-no',t:'unverified'};
+}
+function renderDeadlines(){
+  $('#calcRule').innerHTML=RULES.map(r=>`<option value="${r.k}">${r.t} — ${r.a}</option>`).join('');
+  $('#ruleRows').innerHTML=RULES.map(r=>{const b=vBadge(r.v);return `<tr>
+    <td><strong>${esc(r.t)}</strong>${r.note?`<div class="meta">${esc(r.note)}</div>`:''}</td>
+    <td class="mono">${esc(r.a)}</td>
+    <td class="mono">${ruleInterval(r)}
+      <div class="meta">${esc(r.from)}</div></td>
+    <td><span class="vflag ${b.c}">${b.t}</span></td></tr>`;}).join('');
+  const pub=RULES.filter(r=>r.v==='pub').length, sec=RULES.filter(r=>r.v==='sec').length, unv=RULES.filter(r=>r.v==='unv').length;
+  $('#ruleVerifyNote').textContent=`Every line carries a verification flag. As of ${RULES_LAST_REVIEWED}: ${pub} checked directly against the official Rules/Statutes text, `
+    +`${sec} checked against secondary legal-research sources (not the official text, and not a citator), ${unv} not checked at all. `
+    +`None of this has been run through Westlaw or Lexis. Confirm anything outcome-determinative before filing.`;
+  $('#holidayList').innerHTML=Object.entries(HOLIDAYS).map(([d,n])=>
+    `${fmt(pd(d))} &nbsp; <span style="color:var(--muted)">${esc(n)}</span>`).join('<br>');
+  runCalc();
+}
+function runCalc(){
+  const r=RULES.find(x=>x.k===$('#calcRule').value)||RULES[0];
+  const from=pd($('#calcFrom').value), track=$('#calcTrack').value;
+  const R=(a,b)=>`<div class="r"><span>${a}</span><span class="mono">${b}</span></div>`;
+  if(!from){ $('#calcOut').innerHTML=R('Result','Pick a trigger date'); return; }
+  let h=R('Authority',esc(r.a))+R('Trigger',fmt(from)+' — '+esc(r.from));
+  if(r.special==='ext'){
+    const ret=returnDate(from), file=rollBack(add(ret,-16));
+    h+=R('Return date',fmt(ret)+' — last Friday before the DED')
+     + R('File and serve by','<strong>'+fmt(file)+'</strong>')
+     + R('Days from today',diff(TODAY,file)+'')
+     + R('Consent alternative','Stipulate to '+fmt(add(from,60))+' under R. 4:24-1(c)');
+  } else if(r.track){
+    if(!track){ h+=R('Result','Choose a track'); }
+    else { const raw=add(from,TRACK_DAYS[track]), rolled=roll(raw);
+      h+=R('Track '+track,TRACK_DAYS[track]+' days')+R('Raw date',fmt(raw))
+       +R('After R. 1:3-1 rolling','<strong>'+fmt(rolled)+'</strong>')
+       +R('Motion to extend by',fmt(rollBack(add(returnDate(rolled),-16)))); }
+  } else if(r.special==='years'||r.special==='months'){
+    const raw = r.special==='years'?addYears(from,r.n):addMonths(from,r.n);
+    h+=R('Computed by calendar '+(r.special==='years'?'year':'month')+', not a fixed day count','<strong>'+fmt(raw)+'</strong>')
+     +R('Days from today',diff(TODAY,raw)+'')
+     +R('Rolling','Not applied — this calculator only rolls court-rule deadlines under R. 1:3-1, not substantive statutory periods. Do not rely on a weekend or holiday to buy an extra day; confirm the computation method independently.');
+  } else {
+    const raw=add(from,r.d);
+    const rolled=r.d<0?rollBack(raw):roll(raw);
+    h+=R('Raw date',fmt(raw))+R(r.d<0?'Rolled back to a court day':'After R. 1:3-1 rolling','<strong>'+fmt(rolled)+'</strong>')
+     +R('Days from today',diff(TODAY,rolled)+'');
+    if(r.d<0) h+=R('Direction','Backward-computed — the date moves earlier, never later');
+  }
+  const vb=vBadge(r.v);
+  h+=R('Verification',vb.t==='checked — official text'?'Checked directly against the official Rules/Statutes text — no citator run':
+      vb.t==='checked — secondary source'?`Checked against secondary legal-research sources as of ${RULES_LAST_REVIEWED} — not the official text or a citator`:
+      'Unverified — confirm on Westlaw or Lexis');
+  if(r.note) h+=R('Note',esc(r.note));
+  $('#calcOut').innerHTML=h;
+}
+
+/* ══════════ DISCOVERY LEDGER ══════════ */
+const DISC_TYPES=[
+ {t:'Uniform interrogatories',        d:60, a:'R. 4:17-4(b)'},
+ {t:'Supplemental interrogatories',   d:60, a:'R. 4:17-4(b)'},
+ {t:'Notice to produce',              d:35, a:'R. 4:18-1(b)'},
+ {t:'Notice to produce (with complaint)', d:50, a:'R. 4:18-1(b)'},
+ {t:'Requests for admission',         d:30, a:'R. 4:22-1'},
+ {t:'Subpoena duces tecum',           d:null, manual:true, a:'R. 1:9-2'},
+ {t:'Deficiency demand',              d:20, a:'—'}
+];
+function renderDiscovery(){
+  fillMatterSelect('#discMatter',true);
+  const rows=DB.discovery.slice().sort((a,b)=>(pd(a.dueDate)||9e15)-(pd(b.dueDate)||9e15));
+  $('#discEmpty').style.display=rows.length?'none':'block';
+  $('#discRows').innerHTML=rows.map(x=>{
+    const m=mById(x.matterId)||{name:'(matter removed)',docket:''};
+    const due=pd(x.dueDate), dd=due?diff(TODAY,due):null;
+    return `<tr><td><strong>${esc(m.name)}</strong><div class="meta mono">${esc(m.docket||'')}</div></td>
+      <td>${esc(x.item)}<div class="meta mono">${esc(x.authority||'')}</div></td>
+      <td><span class="pill ${x.direction==='Served on adversary'?'p-blue':'p-amber'}">${esc(x.direction)}</span></td>
+      <td class="mono">${fmt(pd(x.served))}</td><td class="mono">${fmt(due)}</td>
+      <td><span class="num c-${tone(dd)}">${dd===null?'—':dd}</span></td>
+      <td><span class="pill ${x.status==='Complete'?'p-green':x.status==='Overdue'?'p-red':'p-grey'}">${esc(x.status)}</span></td>
+      <td><button class="sm" data-dd="${x.id}">Done</button> <button class="sm" data-dx="${x.id}">×</button></td></tr>`;
+  }).join('');
+  $$('[data-dd]').forEach(b=>b.onclick=async()=>{const x=DB.discovery.find(i=>i.id===b.dataset.dd);x.status='Complete';await save();renderAll();});
+  $$('[data-dx]').forEach(b=>b.onclick=async()=>{DB.discovery=DB.discovery.filter(i=>i.id!==b.dataset.dx);await save();renderAll();});
+}
+function newDiscovery(){
+  const mid=$('#discMatter').value; if(!mid) return toast('Pick a matter first');
+  $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:560px">
+    <div class="mh"><h3>Log discovery</h3><div class="s">${esc((mById(mid)||{}).name||'')}</div></div>
+    <div class="mb"><div class="grid2">
+      <div class="full"><label>Item</label><select class="t" id="d_item">${DISC_TYPES.map(t=>`<option value="${t.t}">${t.t} — ${t.manual?'no fixed period':t.d+' days'} · ${t.a}</option>`).join('')}</select></div>
+      <div><label>Direction</label><select class="t" id="d_dir"><option>Served on adversary</option><option>Received from adversary</option></select></div>
+      <div><label>Date served</label><input type="date" id="d_served" value="${iso(TODAY)}"></div>
+      <div class="full"><div class="derived"><h4>Response due</h4><div id="d_calc"></div></div></div>
+    </div></div>
+    <div class="mf"><button id="d_cancel">Cancel</button><button class="primary" id="d_save">Log it</button></div>
+  </div></div>`;
+  const rc=()=>{
+    const t=DISC_TYPES.find(x=>x.t===$('#d_item').value), s=pd($('#d_served').value);
+    if(t.manual){
+      $('#d_calc').innerHTML=`<div class="r"><span>${esc(t.a)}</span><span class="mono">No fixed statewide response period</span></div>
+        <div class="r"><span>Due date</span><span class="mono"><input type="date" id="d_manual" class="t"></span></div>
+        <p class="note" style="margin-top:6px">Enter the date printed on the document itself — a subpoena's own return date, or the deadline stated in a demand letter. This item is not auto-computed because no NJ Court Rule sets a fixed response period for it (see Deadlines → Rule reference).</p>`;
+      return;
+    }
+    if(!s){$('#d_calc').innerHTML='<div class="r"><span>Pick a service date</span></div>';return;}
+    const raw=add(s,t.d), rolled=roll(raw);
+    $('#d_calc').innerHTML=`<div class="r"><span>${t.d} days per ${t.a}</span><span class="mono">${fmt(raw)}</span></div>
+      <div class="r"><span>After R. 1:3-1 rolling</span><span class="mono"><strong>${fmt(rolled)}</strong></span></div>
+      <div class="r"><span>Days from today</span><span class="mono">${diff(TODAY,rolled)}</span></div>`;
+  };
+  ['d_item','d_served'].forEach(i=>$('#'+i).addEventListener('input',rc)); rc();
+  $('#d_cancel').onclick=()=>$('#modalHost').innerHTML='';
+  $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  $('#d_save').onclick=async()=>{
+    const t=DISC_TYPES.find(x=>x.t===$('#d_item').value), s=pd($('#d_served').value);
+    const due = t.manual ? ($('#d_manual')?$('#d_manual').value:'') : iso(roll(add(s,t.d)));
+    if(t.manual && !due) return toast('Enter the due date shown on the document');
+    DB.discovery.push({id:uid(),matterId:mid,item:t.t,authority:t.a,direction:$('#d_dir').value,
+      served:$('#d_served').value,dueDate:due,status:'Outstanding'});
+    await save();renderAll();$('#modalHost').innerHTML='';toast('Logged');
+  };
+}
+
+/* ══════════ RECORDS CHASE ══════════ */
+const CHASE=[21,30,45,60];
+function renderRecords(){
+  fillMatterSelect('#recMatter',true);
+  const rows=DB.records.slice().sort((a,b)=>(pd(a.nextFollowUp)||9e15)-(pd(b.nextFollowUp)||9e15));
+  $('#recEmpty').style.display=rows.length?'none':'block';
+  $('#recRows').innerHTML=rows.map(r=>{
+    const m=mById(r.matterId)||{name:'(matter removed)'};
+    const n=pd(r.nextFollowUp), dd=n?diff(TODAY,n):null;
+    return `<tr><td><strong>${esc(m.name)}</strong></td><td>${esc(r.provider)}</td>
+      <td class="mono">${fmt(pd(r.requested))}</td>
+      <td><span class="pill p-blue">${r.stage===0?'Initial request':'Follow-up '+r.stage}</span>
+        <div class="meta">${CHASE[r.stage]?CHASE[r.stage]+'-day mark':'escalate'}</div></td>
+      <td class="mono">${fmt(n)}</td>
+      <td><span class="num c-${tone(dd)}">${dd===null?'—':dd}</span></td>
+      <td><span class="pill ${r.status==='Received'?'p-green':'p-amber'}">${esc(r.status)}</span></td>
+      <td>${r.status!=='Received'?`<button class="sm" data-rn="${r.id}">Chased</button> <button class="sm" data-rr="${r.id}">Received</button> `:''}<button class="sm" data-rx="${r.id}">×</button></td></tr>`;
+  }).join('');
+  $$('[data-rn]').forEach(b=>b.onclick=async()=>{
+    const r=DB.records.find(i=>i.id===b.dataset.rn);
+    r.stage=Math.min(r.stage+1,CHASE.length-1);
+    r.nextFollowUp=iso(roll(add(pd(r.requested),CHASE[r.stage])));
+    await save();renderAll();toast('Follow-up logged');});
+  $$('[data-rr]').forEach(b=>b.onclick=async()=>{
+    const r=DB.records.find(i=>i.id===b.dataset.rr);r.status='Received';await save();renderAll();});
+  $$('[data-rx]').forEach(b=>b.onclick=async()=>{DB.records=DB.records.filter(i=>i.id!==b.dataset.rx);await save();renderAll();});
+}
+function newRecord(){
+  const mid=$('#recMatter').value; if(!mid) return toast('Pick a matter first');
+  $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:520px">
+    <div class="mh"><h3>Provider request</h3><div class="s">${esc((mById(mid)||{}).name||'')}</div></div>
+    <div class="mb"><div class="grid2">
+      <div class="full"><label>Provider</label><input class="t" id="r_prov" placeholder="Life Medical Care"></div>
+      <div><label>Date requested</label><input type="date" id="r_req" value="${iso(TODAY)}"></div>
+      <div><label>Authorization sent</label><select class="t" id="r_auth"><option>Yes</option><option>No</option></select></div>
+      <div class="full"><p class="note">Follow-ups fall at 21, 30, 45, and 60 days from the request. The board advances a stage each time you log a chase.</p></div>
+    </div></div>
+    <div class="mf"><button id="r_cancel">Cancel</button><button class="primary" id="r_save">Add</button></div>
+  </div></div>`;
+  $('#r_cancel').onclick=()=>$('#modalHost').innerHTML='';
+  $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  $('#r_save').onclick=async()=>{
+    const req=$('#r_req').value; if(!$('#r_prov').value.trim()) return toast('Provider name required');
+    DB.records.push({id:uid(),matterId:mid,provider:$('#r_prov').value.trim(),requested:req,
+      auth:$('#r_auth').value,stage:0,nextFollowUp:iso(roll(add(pd(req),CHASE[0]))),status:'Outstanding'});
+    await save();renderAll();$('#modalHost').innerHTML='';toast('Added to the chase board');
+  };
+}
+function fillMatterSelect(sel,live){
+  const el=$(sel); if(!el) return;
+  const cur=el.value;
+  const list=DB.matters.filter(m=>!live||isLive(m)).sort((a,b)=>a.name.localeCompare(b.name));
+  el.innerHTML='<option value="">Select a matter…</option>'+list.map(m=>`<option value="${m.id}">${esc(m.name)} · ${esc(m.file)}</option>`).join('');
+  if(cur) el.value=cur;
+}
+
+/* ══════════ LETTERS ══════════ */
+const LETTERS=[
+ {k:'carrier',  t:'Carrier status report'},
+ {k:'hipaaform',t:'HIPAA authorization — the form itself (no letterhead)',form:true},
+ {k:'hipaa',    t:'HIPAA authorization packet — cover to plaintiff counsel'},
+ {k:'records',  t:'Medical records request to provider'},
+ {k:'deficiency',t:'Discovery deficiency letter'},
+ {k:'consent',  t:'R. 4:24-1(c) consent to extend discovery'},
+ {k:'adjourn',  t:'Request to adjourn'},
+ {k:'ack',      t:'Acknowledgment of correspondence'}
+];
+function letterhead(bodyText){
+  const bar=PEOPLE.filter(p=>p.onLH&&!p.counsel);
+  const oc =PEOPLE.filter(p=>p.counsel);
+  const me =PEOPLE.find(p=>p.i===WHO)||PEOPLE.find(p=>p.i==='CJG');
+  return `<div class="lh" id="lhPrint">
+    <div class="lh-top">
+      <div class="lh-firm">${esc(FIRM.name)}</div>
+      <div class="lh-tag">${esc(FIRM.tagline)}</div>
+      <div class="lh-addr">${esc(FIRM.street)}<br>${esc(FIRM.city)}</div>
+    </div>
+    <div class="lh-cols">
+      <div class="lh-names">
+        ${bar.map(p=>`<div>${esc(p.lh)}<sup>${esc(p.mark)}</sup></div>`).join('')}
+        ${oc.length?`<div class="lh-oc">_____</div>
+        ${oc.map(p=>`<div>${esc(p.lh)}<sup>${esc(p.mark)}</sup></div>`).join('')}
+        <div class="lh-oclabel">OF COUNSEL</div>`:''}
+      </div>
+      <div class="lh-mid">
+        <div>${esc(FIRM.phone)}</div>
+        <div>${esc(FIRM.fax)}</div>
+      </div>
+      <div class="lh-offices">
+        ${FIRM.otherOffices.map(o=>`<div class="lh-oname">${esc(o.label)}</div>
+          <div>${esc(o.l1)}</div><div>${esc(o.l2)}</div>`).join('')}
+        <div class="lh-respond">${esc(FIRM.respond)}</div>
+      </div>
+    </div>
+    <div class="lh-legend">
+      ${FIRM.legend.map(l=>`<span><sup>${esc(l.m)}</sup>&nbsp;${esc(l.t)}</span>`).join('')}
+    </div>
+    <div class="lh-email">Sender&rsquo;s Direct E-mail: ${esc(me&&me.email?me.email:'')}</div>
+    <div class="lh-rule"></div>
+    <div class="body">${esc(bodyText)}</div>
+  </div>`;
+}
+/* Reproduces AUTHORIZATION FOR RELEASE OF MEDICAL RECORDS PURSUANT TO
+   45 CFR 164.508 (HIPAA) - the firm's operative form including the
+   reproductive-health line. Text is the firm's own; only the party
+   fields are filled from the matter.                                    */
+function hipaaForm(m){
+  const items=[
+    ['EMERGENCY ROOM RECORD','EEG TRACINGS'],
+    ['CONSULTATIONS','NURSES - NOTES'],
+    ['HISTORY &amp; PHYSICAL EXAM','PATHOLOGY SLIDES'],
+    ['PROGRESS NOTES','PSYCHOTHERAPY NOTES'],
+    ['OPERATIVE REPTS &amp; PATHOLOGY','DISCHARGE SUMMARY'],
+    ['LAB, X-RAY &amp; TESTS','COMPLETE RECORD'],
+    ['X-RAY FILMS','BILLING INFO'],
+    ['Other:  MRI Reports and Films','REPRODUCTIVE HEALTH']
+  ];
+  const fill='<span class="fillin"></span>';
+  return `<div class="hipaa">
+  <div class="h-title">AUTHORIZATION FOR RELEASE OF MEDICAL<br>RECORDS PURSUANT TO 45 CFR 164.508 (HIPAA)</div>
+  <p>PATIENT NAME: ${fill} D.O.B.: ${fill}</p>
+  <p>ADDRESS: ${fill}</p>
+  <p>I hereby authorize ${fill}</p>
+  <p>ADDRESS: ${fill}</p>
+  <p>to release my health information to:&nbsp;&nbsp;<strong>Gaul, Baratta &amp; Rosello</strong><br>
+     100 Hanover Ave<br>Cedar Knolls, NJ 07927</p>
+  <p>The information to be disclosed to and used by the above is for the following purpose: At the request of the individual named above.</p>
+  <p>This authorization is limited to all dates of treatment: &nbsp; Patient&rsquo;s DOB - Present</p>
+  <p><u>Information to be disclosed:</u></p>
+  <table class="h-items">${items.map(r=>`<tr><td>[ X ]&nbsp;&nbsp; ${r[0]}</td><td>[ X ]&nbsp;&nbsp; ${r[1]}</td></tr>`).join('')}</table>
+  <p>It is my intent that the use of the information furnished is prohibited for any purpose other than stated above and that the recipient is prohibited from disclosing this information to any other party to whom disclosure is not necessary or required for the purpose stated above. I hereby designate Gaul, Baratta &amp; Rosello, LLC, as authorized representative per N.J.A.C. 13:35-6.5 (a) and (c).</p>
+  <p>I understand that the above provider will not condition treatment on whether or not I agree to sign this authorization.</p>
+  <p>I understand that I have the right to revoke this authorization at any time. I understand if I revoke this authorization, I must do so in writing and present my written revocation to the Health Information Management Department. I understand that the unauthorized re-disclosure of this information is no longer protected under federal and/or state confidentiality rules. I understand that this revocation will not apply to the extent that you have already taken action in reliance on this authorization. This authorization will automatically expire 180 days from the date of my signature, unless I otherwise specify that this authorization will terminate on the following date, or concurrently with the following event or condition:</p>
+  <p>I understand that if my medical records contain information related to the history, diagnosis and/or treatment of any psychiatric problems, mental illness, drug abuse, alcoholism, sexual and reproductive health, touch on care, sexually transmitted or communicable disease, Aids or test for infection of human immunodeficiency virus (HIV), that my signing this document authorizes you to release that information. I acknowledge and am aware that New Jersey has a statutory privilege accorded to the confidential communications between a patient and a licensed physician or psychologist and that my signing this form waives this privilege.</p>
+  <p>I understand that I may be subject to criminal penalties pursuant to 42 U.S.C. 1320d-6 if I knowingly and in violation of HIPAA obtain individually identifiable health information relating to an individual or disclose individually identifiable health information to another person.</p>
+  <p style="margin-top:26px">PATIENT SIGNATURE: ________________________________________ DATE: ________________________</p>
+  <p class="h-note">Note: You are required by 45 CFR 164.524 to permit access, or provide copies of the requested records, within 30 days after receipt of this request.</p>
+  <p class="h-matter">${esc(m?m.name:'')}${m&&m.docket?' &nbsp;&middot;&nbsp; Docket No. '+esc(m.docket):''}${m&&m.file?' &nbsp;&middot;&nbsp; Our File No. '+esc(m.file):''}</p>
+  </div>`;
+}
+function buildLetter(kind,m){
+  const d=derive(m), today=fmtLong(TODAY);
+  const cap=m.name, dk=m.docket||'[docket]', me=PEOPLE.find(p=>p.i===WHO)||PEOPLE.find(p=>p.i==='CJG');
+  const sign=`\n\nVery truly yours,\n\nGAUL, BARATTA & ROSELLO, LLC\n\n\n${me.n}\n`;
+  const head=(to,re)=>`${today}\n\n${to}\n\nRe:\t${cap}\n\tDocket No. ${dk}\n\tOur File No. ${m.file}${m.claim?`\n\tClaim No. ${m.claim}`:''}\n\t${re}\n\nDear ${to.split('\n')[0].startsWith('Attn')?'Counsel':'Sir or Madam'}:\n\n`;
+  switch(kind){
+    case 'carrier': return head(`${m.carrier||'[Carrier]'}\n${m.adjuster?'Attn: '+m.adjuster:'Attn: Claim Representative'}`,'Status Report')
+      + `We write to report on the status of the above matter.\n\n`
+      + `POSTURE. This matter is in ${m.status.toLowerCase()} posture in ${VENUES[m.venue]||m.venue||'[venue]'} County, Law Division, on Track ${m.track}. `
+      + (d.ded?`The discovery end date is ${fmtLong(d.ded)}.`:`No discovery end date has been assigned.`)
+      + (pd(m.arbitration)?` Arbitration is scheduled for ${fmtLong(pd(m.arbitration))}.`:'')
+      + (pd(m.trial)?` Trial is listed for ${fmtLong(pd(m.trial))}.`:'')
+      + `\n\nDISCOVERY. ${m.depo?`Plaintiff's deposition: ${m.depo}. `:'Plaintiff has not yet been deposed. '}`
+      + `${m.records?`Medical records are ${m.records.toLowerCase()}. `:''}${m.ime?`IME: ${m.ime}.`:'No Independent Medical Examination has been scheduled to date.'}`
+      + (d.file&&d.dFile>=0?`\n\nDISCOVERY EXTENSION. Should an extension become necessary, any motion must be filed and served by ${fmtLong(d.file)} to be returnable ${fmtLong(d.ret)}, which precedes the discovery end date as R. 4:24-1(c) requires.`:'')
+      + (d.locked?`\n\nWe note that a ${pd(m.arbitration)?'arbitration':'trial'} date has been fixed. Under R. 4:24-1(c) no further extension of discovery is available absent a showing of exceptional circumstances.`:'')
+      + `\n\nEVALUATION. [Liability assessment, damages exposure, and reserve recommendation to be inserted.]\n\nWe will continue to keep you apprised.`+sign;
+    case 'hipaa': return head('Attn: Counsel for Plaintiff','HIPAA Authorizations')
+      + `Enclosed please find HIPAA-compliant authorizations for execution by your client in connection with the above matter.\n\n`
+      + `Kindly have your client execute each authorization and return them within twenty (20) days. The authorizations are limited to the providers identified and to records relevant to the injuries placed in controversy by the pleadings.\n\n`
+      + `If your client objects to any authorization, please identify the specific objection in writing so that the issue can be narrowed before motion practice becomes necessary.`+sign;
+    case 'records': return head('[Provider name]\n[Provider address]','Request for Medical Records')
+      + `This office represents the defendant in the above-captioned matter. Enclosed is a HIPAA-compliant authorization executed by your patient.\n\n`
+      + `Please provide complete copies of all records in your possession, including office notes, intake forms, diagnostic imaging and reports, operative reports, physical therapy notes, billing records, and any correspondence relating to treatment.\n\n`
+      + `Please advise of any copying charge in advance. Records may be produced electronically to ${(PEOPLE.find(p=>p.i==='CJG')||{}).email||''}.`+sign;
+    case 'deficiency': return head('Attn: Counsel for Plaintiff','Discovery Deficiencies')
+      + `We write concerning deficiencies in your client's discovery responses in the above matter.\n\n`
+      + `[Itemize each deficiency by interrogatory or demand number.]\n\n`
+      + `Please provide fully responsive answers within twenty (20) days. If we do not receive them, we will move to compel and, if warranted, for dismissal under R. 4:23-5, together with an application for fees.\n\n`
+      + `This letter is written in a good-faith effort to resolve these issues without motion practice pursuant to R. 1:6-2(c).`+sign;
+    case 'consent': {
+      const cur=d.ded, prop=cur?add(cur,60):null;
+      return head('Attn: Counsel of Record','Consent to Extend Discovery — R. 4:24-1(c)')
+      + `The discovery end date in this matter is ${cur?fmtLong(cur):'[date]'}. Discovery remains outstanding, and the parties require additional time to complete it.\n\n`
+      + `Pursuant to R. 4:24-1(c), the parties may consent to an extension of sixty (60) days without application to the court where no arbitration or trial date has been fixed. `
+      + (d.locked?`We note that a date has been fixed in this matter, which may require an application to the court instead.\n\n`:`No arbitration or trial date has been fixed.\n\n`)
+      + `We therefore propose extending the discovery end date to ${prop?fmtLong(prop):'[date]'}. Kindly countersign below and return a copy at your earliest convenience.\n\n`
+      + `If you do not consent, please advise promptly so that a motion may be filed and made returnable before the discovery period ends, as the Rule requires.\n\n\nCONSENTED AND AGREED:\n\n_______________________________\t\tDated: ______________`+sign; }
+    case 'adjourn': return head('Hon. '+(m.judge||'[Judge]')+', J.S.C.\n'+(VENUES[m.venue]||'[County]')+' County Courthouse','Request for Adjournment')
+      + `We respectfully request an adjournment of the [proceeding] presently scheduled for [date].\n\n`
+      + `The basis for this request is [reason]. [Adversary] has been contacted and [consents / does not consent] to this request. This is the [first] such request.\n\n`
+      + `We are available on [proposed dates] and thank the Court for its consideration.`+sign;
+    default: return head('[Recipient]','Acknowledgment')
+      + `We acknowledge receipt of your correspondence of [date] in the above matter.\n\n`
+      + `[Substantive response.]\n\nThank you for your courtesy.`+sign;
+  }
+}
+function renderLetters(){
+  fillMatterSelect('#ltrMatter',false);
+  $('#ltrType').innerHTML=LETTERS.map(l=>`<option value="${l.k}">${l.t}</option>`).join('');
+  const q=DB.letters.filter(l=>l.status==='Pending');
+  $('#apprCount').textContent=q.length;
+  $('#apprEmpty').style.display=q.length?'none':'block';
+  $('#apprRows').innerHTML=q.map(l=>{
+    const m=mById(l.matterId)||{name:'—'};
+    return `<tr><td><strong>${esc(m.name)}</strong></td><td>${esc(l.type)}</td>
+      <td><span class="pill p-grey">${esc(l.by)}</span></td><td class="mono">${fmt(pd(l.date))}</td>
+      <td><button class="sm" data-la="${l.id}">Approve</button> <button class="sm" data-lv="${l.id}">View</button> <button class="sm" data-lx="${l.id}">×</button></td></tr>`;
+  }).join('');
+  $$('[data-la]').forEach(b=>b.onclick=async()=>{const l=DB.letters.find(x=>x.id===b.dataset.la);
+    if(WHO!=='CJG'&&!confirm('Only CJG approves outgoing letters. Approve anyway?'))return;
+    l.status='Approved';l.approvedBy=WHO;await save();renderAll();toast('Approved');});
+  $$('[data-lv]').forEach(b=>b.onclick=()=>{const l=DB.letters.find(x=>x.id===b.dataset.lv);
+    $('#ltrOut').innerHTML=l.raw?`<div class="lh" id="lhPrint">${l.text}</div>`:letterhead(l.text);
+    window.scrollTo({top:0,behavior:'smooth'});});
+  $$('[data-lx]').forEach(b=>b.onclick=async()=>{DB.letters=DB.letters.filter(x=>x.id!==b.dataset.lx);await save();renderAll();});
+}
+
+/* ══════════ BILLING SCRUB ══════════ */
+const SCRUB=[
+ {n:'Vague narrative',      re:/\b(attend to same|review file|work on|handle|address|various|as needed|miscellaneous|follow up$)\b/i,
+  why:'Carrier guidelines require a narrative that identifies the task and the document. "Review file" tells an auditor nothing.'},
+ {n:'Block billing',        test:e=>(e.narr.match(/;|,\s*(and\s+)?(review|draft|prepare|attend|confer|analyze|revise)/gi)||[]).length>=2&&e.hours>=1.0,
+  why:'Multiple discrete tasks in one entry. Travelers and most panels require them itemized separately.'},
+ {n:'Clerical task',        re:/\b(scan|file(?!\s+a\b)|photocopy|copy|mail|fax|calendar|organize|bates|upload|download|print)\b/i,
+  why:'Clerical work is overhead, not billable. Auditors cut these on sight.'},
+ {n:'Intra-office conference', re:/\b(conference|call|meeting|discuss|confer)\b.*\b(with|w\/)\s*(CJG|JAD|JEZ|JMG|SMB|JAB|LFR|JSC)\b/i,
+  why:'Most panel guidelines bar billing more than one timekeeper for the same internal conference, and some bar it entirely.'},
+ {n:'Excessive block of time', test:e=>e.hours>=8.0,
+  why:'Any single entry at or above 8.0 hours draws scrutiny. Break the day into discrete tasks.'},
+ {n:'Not in tenth increments', test:e=>Math.abs(e.hours*10-Math.round(e.hours*10))>1e-9,
+  why:'Firm standard is 0.1 increments.'},
+ {n:'Uses "DME"',           re:/\bDME\b/,
+  why:'House rule — always "IME," the plaintiff-preferred "DME" never appears in GBR work product.'},
+ {n:'Travel billed full',   re:/\btravel\b/i,
+  why:'Many panels reimburse travel at half rate or not at all. Confirm before submitting.'},
+ {n:'Legal research, no issue', test:e=>/research/i.test(e.narr)&&!/\bre:?\s|\bregarding\b|\bwhether\b/i.test(e.narr),
+  why:'Research entries must name the issue researched.'}
+];
+function runScrub(){
+  const lines=$('#billIn').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length){$('#billOut').innerHTML='<div class="empty">Nothing to scrub.</div>';return;}
+  const out=[]; let total=0, flagged=0;
+  lines.forEach((line,i)=>{
+    const p=line.split('|').map(s=>s.trim());
+    if(p.length<4){ out.push({i:i+1,raw:line,bad:[{n:'Unparseable',why:'Expected: date | timekeeper | hours | narrative'}],hours:0}); return; }
+    const e={date:p[0],tk:p[1],hours:parseFloat(p[2])||0,narr:p.slice(3).join(' | ')};
+    total+=e.hours;
+    const bad=SCRUB.filter(r=> r.re? r.re.test(e.narr) : r.test(e));
+    if(bad.length) flagged++;
+    out.push({i:i+1,e,bad});
+  });
+  $('#billOut').innerHTML=`
+    <div class="tiles" style="grid-template-columns:repeat(3,1fr)">
+      <div class="tile"><div class="n">${lines.length}</div><div class="l">Entries</div></div>
+      <div class="tile"><div class="n">${total.toFixed(1)}</div><div class="l">Hours</div></div>
+      <div class="tile ${flagged?'red':'green'}"><div class="n">${flagged}</div><div class="l">Flagged</div></div>
+    </div>
+    ${out.map(o=>`<div class="card" style="padding:12px 14px;margin-bottom:9px;border-left:3px solid ${o.bad.length?'var(--oxblood)':'var(--moss)'}">
+      <div style="font-size:12.5px"><span class="mono">${o.e?esc(o.e.date+' · '+o.e.tk+' · '+o.e.hours.toFixed(1)):''}</span></div>
+      <div style="margin:4px 0 6px">${esc(o.e?o.e.narr:o.raw)}</div>
+      ${o.bad.length? o.bad.map(b=>`<div style="font-size:11.5px;color:var(--oxblood);margin-top:4px">
+        <strong>${esc(b.n)}</strong> — ${esc(b.why)}</div>`).join('')
+        : '<div style="font-size:11.5px;color:var(--moss)">Clean.</div>'}
+    </div>`).join('')}`;
+}
+
+/* ══════════ TASKS ══════════ */
+function renderTasks(){
+  const f=$('#taskOwnerFilter');
+  if(f.options.length<=1) f.innerHTML='<option value="">All owners</option>'+PEOPLE.map(p=>`<option value="${p.i}">${p.i} — ${p.n}</option>`).join('');
+  const own=f.value;
+  const cols=[['Open',t=>!t.done&&(!t.due||diff(TODAY,pd(t.due))>14)],
+              ['Next 14 days',t=>!t.done&&t.due&&diff(TODAY,pd(t.due))<=14&&diff(TODAY,pd(t.due))>=0],
+              ['Overdue',t=>!t.done&&t.due&&diff(TODAY,pd(t.due))<0]];
+  const list=DB.tasks.filter(t=>!own||t.owner===own);
+  $('#taskCount').textContent=`${list.filter(t=>!t.done).length} open · ${list.filter(t=>t.done).length} done`;
+  $('#taskBoard').innerHTML=cols.map(([label,fn])=>{
+    const items=list.filter(fn).sort((a,b)=>(pd(a.due)||9e15)-(pd(b.due)||9e15));
+    return `<div class="card"><h3>${label} <span class="pill ${label==='Overdue'?'p-red':label==='Next 14 days'?'p-amber':'p-grey'}">${items.length}</span></h3>
+      ${items.length? items.map(t=>{
+        const m=mById(t.matterId);
+        return `<div style="padding:8px 0;border-bottom:1px solid var(--rule2)">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <input type="checkbox" data-tk="${t.id}" style="width:auto;margin-top:3px">
+            <div style="flex:1">
+              <div style="font-weight:500;font-size:13px">${esc(t.title)}</div>
+              <div class="meta">${m?esc(m.name)+' · ':''}<span class="pill p-grey">${esc(t.owner)}</span>
+                ${t.due?` <span class="mono c-${tone(diff(TODAY,pd(t.due)))}">${fmt(pd(t.due))}</span>`:''}</div>
+            </div>
+            <button class="sm ghost" data-tx="${t.id}">×</button></div></div>`;}).join('')
+        : '<p class="note">Nothing here.</p>'}</div>`;
+  }).join('');
+  $$('[data-tk]').forEach(c=>c.onclick=async()=>{const t=DB.tasks.find(x=>x.id===c.dataset.tk);t.done=true;await save();renderAll();});
+  $$('[data-tx]').forEach(b=>b.onclick=async()=>{DB.tasks=DB.tasks.filter(x=>x.id!==b.dataset.tx);await save();renderAll();});
+}
+function newTask(){
+  $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:520px">
+    <div class="mh"><h3>New task</h3><div class="s">Assign to the handling attorney, or to Jordan for discovery and motion support.</div></div>
+    <div class="mb"><div class="grid2">
+      <div class="full"><label>Task</label><input class="t" id="t_title" placeholder="Draft motion to extend discovery"></div>
+      <div><label>Owner</label><select class="t" id="t_owner">${PEOPLE.map(p=>`<option value="${p.i}"${p.i===WHO?' selected':''}>${p.i} — ${p.n}</option>`).join('')}</select></div>
+      <div><label>Due</label><input type="date" id="t_due"></div>
+      <div class="full"><label>Matter (optional)</label><select class="t" id="t_matter"></select></div>
+    </div></div>
+    <div class="mf"><button id="t_cancel">Cancel</button><button class="primary" id="t_save">Add</button></div>
+  </div></div>`;
+  fillMatterSelect('#t_matter',true);
+  $('#t_cancel').onclick=()=>$('#modalHost').innerHTML='';
+  $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  $('#t_save').onclick=async()=>{
+    if(!$('#t_title').value.trim())return toast('Give it a title');
+    DB.tasks.push({id:uid(),title:$('#t_title').value.trim(),owner:$('#t_owner').value,
+      due:$('#t_due').value,matterId:$('#t_matter').value||null,done:false});
+    await save();renderAll();$('#modalHost').innerHTML='';toast('Task added');
+  };
+}
+
+/* ══════════ DIRECTORY ══════════ */
+function renderDirectory(){
+  $('#dirOffices').innerHTML=
+    `<div style="padding:7px 0;border-bottom:1px solid var(--rule2)"><strong>CEDAR KNOLLS (main)</strong>
+      <div class="note">${esc(FIRM.street)}<br>${esc(FIRM.city)}</div></div>`
+    +FIRM.otherOffices.map(o=>`<div style="padding:7px 0;border-bottom:1px solid var(--rule2)">
+      <strong>${esc(o.label)}</strong><div class="note">${esc(o.l1)}<br>${esc(o.l2)}</div></div>`).join('')
+    +`<div style="padding:7px 0"><div class="note mono">${esc(FIRM.phone)} &nbsp;&middot;&nbsp; ${esc(FIRM.fax)}</div>
+      <div class="note" style="font-style:italic">${esc(FIRM.respond)}</div></div>`;
+  $('#dirPeople').innerHTML=PEOPLE.map(p=>`<tr><td class="mono"><strong>${p.i}</strong></td>
+    <td>${esc(p.n)}${p.mark?`<sup>${esc(p.mark)}</sup>`:''}</td>
+    <td>${esc(p.r)}</td><td class="note">${esc(p.o||'—')}</td></tr>`).join('')
+    +`<tr><td colspan="4" class="note" style="padding-top:9px">${FIRM.legend.map(l=>`<sup>${esc(l.m)}</sup>&nbsp;${esc(l.t)}`).join(' &nbsp;&middot;&nbsp; ')}</td></tr>`;
+  $('#dirCarriers').innerHTML=CARRIERS.map(c=>`<tr><td><strong>${esc(c.n)}</strong></td>
+    <td><span class="pill ${c.s==='Panel'?'p-green':'p-amber'}">${esc(c.s)}</span></td><td>${esc(c.c||'—')}</td></tr>`).join('');
+  $('#dirVenues').innerHTML=Object.entries(VENUES).map(([k,v])=>`<strong>${k}</strong> &nbsp;${esc(v)}`).join('<br>');
+}
+
+/* ══════════ INTAKE ══════════ */
+const SCHEMA=`{
+"documentType":"track assignment notice | order extending discovery | arbitration notice | trial notice | notice of motion | complaint | other",
+"caseName":"Plaintiff v. Defendant, short form, surnames only",
+"docketNumber":"exactly as printed, e.g. ESX-L-000839-24",
+"venue":"county abbreviation: ESX BER HUD UNN MRS PAS MID MON OCN SOM SSX WRN HNT CAM BUR MER CPM ATL GLO SAL CUM, or NY or USDC",
+"ourFileNumber":"GBR file number if printed, else null",
+"track":"I, II, III, IV or null",
+"discoveryEndDate":"YYYY-MM-DD or null",
+"arbitrationDate":"YYYY-MM-DD or null",
+"trialDate":"YYYY-MM-DD or null",
+"judge":"judge surname or null",
+"uncertain":["field names you guessed or could not read"],
+"summary":"one sentence on what this document does"
+}`;
+async function extract(b64,mime){
+  const isPdf=mime==='application/pdf';
+  const block=isPdf?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}
+                   :{type:'image',source:{type:'base64',media_type:mime,data:b64}};
+  const prompt=`You are reading a New Jersey Superior Court document for a civil defense firm's docketing system.
+
+Extract these fields and respond with ONLY a JSON object — no markdown fences, no preamble:
+${SCHEMA}
+
+Rules:
+- Dates as YYYY-MM-DD. If a date is not printed, use null. Never infer or calculate a date.
+- "discoveryEndDate" is the DED. On an order extending discovery, use the NEW end date.
+- List anything you are unsure about in "uncertain" so a human checks it.
+- If this is not a court document, set documentType to "other" and leave dates null.`;
+  const body=JSON.stringify({model:'claude-sonnet-5',max_tokens:1000,
+    messages:[{role:'user',content:[block,{type:'text',text:prompt}]}]});
+  const headers=APIKEY
+    ?{'Content-Type':'application/json','x-api-key':APIKEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}
+    :{'Content-Type':'application/json'};
+  let res;
+  try{ res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body}); }
+  catch(e){ throw new Error(APIKEY?'Could not reach the reading service. Check the connection.'
+    :'Reading needs an API key when this runs from a file on your computer. Open Settings and add one, or use Add matter by hand.'); }
+  if(res.status===401||res.status===403) throw new Error('That API key was rejected. Check it in Settings.');
+  if(res.status===429) throw new Error('Rate limited. Wait a moment and try again.');
+  if(!res.ok){ let d='';try{d=(await res.json()).error.message}catch(e){} throw new Error('Reading service error '+res.status+(d?': '+d:'')); }
+  const data=await res.json();
+  const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+  const c=txt.replace(/^```(?:json)?/,'').replace(/```$/,'').trim();
+  const a=c.indexOf('{'), z=c.lastIndexOf('}');
+  if(a<0||z<0) throw new Error('Could not read a result from this document');
+  return JSON.parse(c.slice(a,z+1));
+}
+function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();
+  r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(new Error('Could not read this file'));r.readAsDataURL(f);});}
+async function handleFiles(files){
+  for(const f of files){
+    const id='j'+Math.random().toString(36).slice(2,8);
+    const d=document.createElement('div');d.className='job';d.id=id;
+    d.innerHTML='<div class="spin"></div><div class="nm"></div><div class="st"></div>';
+    d.querySelector('.nm').textContent=f.name;d.querySelector('.st').textContent='Reading…';
+    $('#queue').appendChild(d);
+    try{
+      const b64=await toB64(f);
+      d.querySelector('.st').textContent='Extracting dates…';
+      const out=await extract(b64,f.type||'application/pdf');
+      d.remove(); reviewExtract(out,f.name);
+    }catch(err){
+      d.classList.add('err'); const s=d.querySelector('.spin'); if(s)s.remove();
+      d.querySelector('.st').textContent=err.message;
+      const b=document.createElement('button');b.className='sm ghost';b.textContent='Dismiss';b.onclick=()=>d.remove();d.appendChild(b);
+    }
+  }
+}
+function reviewExtract(x,src){
+  const existing=x.docketNumber?DB.matters.find(m=>norm(m.docket)===norm(x.docketNumber)):null;
+  const isOrder=/order|extend/i.test(x.documentType||'');
+  if(existing){
+    if(isOrder&&x.discoveryEndDate){ existing.originalDED=existing.originalDED||existing.currentDED||'';
+      existing.currentDED=x.discoveryEndDate; }
+    if(x.arbitrationDate) existing.arbitration=x.arbitrationDate;
+    if(x.trialDate) existing.trial=x.trialDate;
+    if(x.judge&&!existing.judge) existing.judge=x.judge;
+    existing.lastActivity=iso(TODAY);
+    existing.notes=(existing.notes?existing.notes+' ':'')+`[${fmt(TODAY)} ${src}: ${x.summary||x.documentType}]`;
+    openMatter(existing);
+    toast('Matched an existing matter — review the update');
+    return;
+  }
+  const m={id:uid(),side:'defense',name:x.caseName||'',docket:x.docketNumber||'',venue:(x.venue||'').toUpperCase(),
+    file:x.ourFileNumber||'',status:'Active',owner:WHO,carrier:'',claim:'',adjuster:'',judge:x.judge||'',
+    track:x.track||'II',originalDED:x.discoveryEndDate||'',currentDED:'',sol:'',
+    consent:'',motion:'',records:'',depo:'',ime:'',arbitration:x.arbitrationDate||'',trial:x.trialDate||'',
+    notes:`[${fmt(TODAY)} ${src}: ${x.summary||x.documentType}]`,lastActivity:iso(TODAY)};
+  openMatter(null);
+  setTimeout(()=>{
+    $('#e_name').value=m.name;$('#e_docket').value=m.docket;$('#e_venue').value=m.venue;
+    $('#e_file').value=m.file;$('#e_judge').value=m.judge;$('#e_track').value=m.track||'II';
+    $('#e_oded').value=m.originalDED;$('#e_arb').value=m.arbitration;$('#e_trial').value=m.trial;
+    $('#e_notes').value=m.notes;
+    (x.uncertain||[]).forEach(k=>{
+      const map={caseName:'e_name',docketNumber:'e_docket',venue:'e_venue',discoveryEndDate:'e_oded',
+        arbitrationDate:'e_arb',trialDate:'e_trial',ourFileNumber:'e_file',judge:'e_judge',track:'e_track'};
+      const el=document.getElementById(map[k]); if(el) el.classList.add('flagme');
+    });
+    $('#e_oded').dispatchEvent(new Event('input'));
+  },30);
+}
+
+/* ══════════ EXPORTS ══════════ */
+function dl(name,text,mime){const b=new Blob([text],{type:mime}),u=URL.createObjectURL(b);
+  const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);}
+function icsD(d){return iso(d).replace(/-/g,'');}
+function icalEsc(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');}
+function buildIcs(){
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//GBR//Matter Ops//EN','CALSCALE:GREGORIAN'];let n=0;
+  const ev=(dt,title,desc)=>{L.push('BEGIN:VEVENT','UID:'+uid()+Date.now()+'@gaul-law.com',
+    'DTSTAMP:'+icsD(TODAY)+'T090000Z','DTSTART;VALUE=DATE:'+icsD(dt),'DTEND;VALUE=DATE:'+icsD(add(dt,1)),
+    'SUMMARY:'+icalEsc(title),'DESCRIPTION:'+icalEsc(desc),
+    'BEGIN:VALARM','TRIGGER:-P7D','ACTION:DISPLAY','DESCRIPTION:'+icalEsc(title),'END:VALARM','END:VEVENT');n++;};
+  DB.matters.filter(isLive).forEach(m=>{
+    const d=derive(m), init=m.owner||'CJG', v=m.venue||'';
+    if(d.file) ev(d.file,`${init}: ${m.name} - FILE MOTION TO EXTEND DISCOVERY (ret ${fmt(d.ret)}) - ${v}`,
+      `DED ${fmt(d.ded)}. Return ${fmt(d.ret)}. R. 1:6-3(a) requires filing and service 16 days before the return date. R. 4:24-1(c) requires the motion be returnable before the discovery period ends.`
+      +(d.locked?' CAUTION: a date is already fixed - exceptional circumstances standard applies.':'')
+      +` Confirm the return date against the ${v} motion calendar.`);
+    if(d.ded) ev(d.ded,`${init}: ${m.name} - DED - ${v}`,`Discovery end date. Docket ${m.docket}. File ${m.file}.`);
+    const a=pd(m.arbitration); if(a) ev(a,`${init}: ${m.name} - ARBITRATION - ${v}`,`Docket ${m.docket}.`);
+    const t=pd(m.trial); if(t) ev(t,`${init}: ${m.name} - TRIAL - ${v}`,`Docket ${m.docket}.`);
+    const s=pd(m.sol); if(s) ev(s,`${init}: ${m.name} - STATUTE OF LIMITATIONS - ${v}`,`Plaintiff matter. File ${m.file}.`);
+  });
+  DB.records.filter(r=>r.status!=='Received'&&r.nextFollowUp).forEach(r=>{
+    const m=mById(r.matterId); if(!m) return;
+    ev(pd(r.nextFollowUp),`${m.owner}: ${m.name} - RECORDS FOLLOW-UP ${r.provider} - ${m.venue||''}`,`Stage ${r.stage}. Requested ${fmt(pd(r.requested))}.`);
+  });
+  DB.discovery.filter(x=>x.status!=='Complete'&&x.dueDate).forEach(x=>{
+    const m=mById(x.matterId); if(!m) return;
+    ev(pd(x.dueDate),`${m.owner}: ${m.name} - ${x.item.toUpperCase()} DUE - ${m.venue||''}`,`${x.direction}. Served ${fmt(pd(x.served))}. ${x.authority}.`);
+  });
+  L.push('END:VCALENDAR');return{text:L.join('\r\n'),n};
+}
+function buildCsv(){
+  const H=['Case Name','Docket #','Our File #','Side','Status','Owner','Track','Carrier','Claim #','Adjuster','Judge',
+    'Original DED','Current DED','Days to DED','File Motion By','Return Date','60-Day Consent','Motion to Extend',
+    'Medical Records','Plaintiff Deposition','IME','Arbitration','Trial','SOL','Notes'];
+  const q=v=>{v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const L=[H.join(',')];
+  DB.matters.forEach(m=>{const d=derive(m);
+    L.push([m.name,m.docket,m.file,m.side,m.status,m.owner,m.track,m.carrier,m.claim,m.adjuster,m.judge,
+      fmt(pd(m.originalDED)),fmt(pd(m.currentDED)),d.dDED===null?'':d.dDED,fmt(d.file),fmt(d.ret),
+      m.consent,m.motion,m.records,m.depo,m.ime,fmt(pd(m.arbitration)),fmt(pd(m.trial)),fmt(pd(m.sol)),m.notes].map(q).join(','));});
+  return L.join('\n');
+}
+
+/* ══════════ RENDER + WIRING ══════════ */
+function renderAll(){
+  $('#whoLbl').textContent=`${WHO} · ${fmt(TODAY)}`;
+  $('#draftBanner').innerHTML = DB.matters.length ? '' : `<div class="info">
+    <strong>No matters loaded yet.</strong> Add one by hand from Intake or Matters, drop a scanned notice or order
+    to have it read automatically, or open a handoff file from a colleague (Settings → Open handoff file) to bring
+    in an existing list. Nothing here is shared with anyone else until you export and send a handoff file yourself.</div>`;
+  const of_=$('#fOwner');
+  if(of_.options.length<=1) of_.innerHTML='<option value="">All timekeepers</option>'+PEOPLE.map(p=>`<option value="${p.i}">${p.i}</option>`).join('');
+  $('#setWho').innerHTML=PEOPLE.map(p=>`<option value="${p.i}"${p.i===WHO?' selected':''}>${p.i} — ${p.n}</option>`).join('');
+  $('#setKey').value=APIKEY;
+  $('#setRules').innerHTML=STANDING.map(s=>`<li>${esc(s)}</li>`).join('');
+  $('#billRules').innerHTML=SCRUB.map(r=>`<div style="padding:7px 0;border-bottom:1px solid var(--rule2)">
+    <strong style="font-size:12.5px">${esc(r.n)}</strong><div class="note">${esc(r.why)}</div></div>`).join('');
+  paintKey();
+  renderDash();renderMatters();renderDeadlines();renderDiscovery();renderRecords();
+  renderLetters();renderTasks();renderDirectory();
+}
+function paintKey(){
+  const b=$('#keyBanner');
+  if(APIKEY||window.storage){b.innerHTML='';return;}
+  b.innerHTML=`<div class="warn"><strong>Reading is off.</strong> This copy is running from a file on your computer,
+    so it needs the firm's Anthropic API key before it can read documents. Add one in Settings.
+    The deadline engine, letters, and Add by hand all work without it.</div>`;
+}
+$('#tabs').onclick=e=>{
+  const b=e.target.closest('button[data-p]'); if(!b) return;
+  $$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  $$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p));
+  window.scrollTo({top:0});
+};
+const drop=$('#drop');
+drop.onclick=()=>$('#picker').click();
+drop.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#picker').click();}};
+$('#picker').onchange=e=>{handleFiles([...e.target.files]);e.target.value='';};
+['dragenter','dragover'].forEach(v=>drop.addEventListener(v,e=>{e.preventDefault();drop.classList.add('hot');}));
+['dragleave','drop'].forEach(v=>drop.addEventListener(v,e=>{e.preventDefault();drop.classList.remove('hot');}));
+drop.addEventListener('drop',e=>handleFiles([...e.dataTransfer.files]));
+window.addEventListener('dragover',e=>e.preventDefault());
+window.addEventListener('drop',e=>e.preventDefault());
+
+$('#btnManual').onclick=()=>openMatter(null);
+$('#btnNewMatter').onclick=()=>openMatter(null);
+$('#btnKey').onclick=()=>{$$('#tabs button').forEach(x=>x.classList.toggle('on',x.dataset.p==='settings'));
+  $$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-settings'));window.scrollTo({top:0});};
+['fSide','fStatus','fOwner','fSearch'].forEach(i=>$('#'+i).addEventListener('input',renderMatters));
+['calcRule','calcFrom','calcTrack'].forEach(i=>$('#'+i).addEventListener('input',runCalc));
+$('#btnNewDisc').onclick=newDiscovery;
+$('#btnNewRec').onclick=newRecord;
+$('#btnNewTask').onclick=newTask;
+$('#taskOwnerFilter').onchange=renderTasks;
+$('#btnScrub').onclick=runScrub;
+$('#btnScrubClear').onclick=()=>{$('#billIn').value='';$('#billOut').innerHTML='<div class="empty">Paste entries and run the scrub.</div>';};
+$('#btnGenLtr').onclick=async()=>{
+  const m=mById($('#ltrMatter').value); if(!m) return toast('Pick a matter');
+  const kind=$('#ltrType').value, def=LETTERS.find(l=>l.k===kind)||{};
+  const isForm=!!def.form;
+  const text=isForm?hipaaForm(m):buildLetter(kind,m);
+  // The HIPAA authorization is a standalone form - it does not go on letterhead.
+  $('#ltrOut').innerHTML=isForm?`<div class="lh" id="lhPrint">${text}</div>`:letterhead(text);
+  DB.letters.push({id:uid(),matterId:m.id,type:def.t,by:WHO,
+    date:iso(TODAY),status:'Pending',text,raw:isForm});
+  await save();renderLetters();toast('Drafted — sitting in the approval queue');
+};
+$('#btnPrintLtr').onclick=()=>{ if(!$('#lhPrint')) return toast('Generate a letter first'); window.print(); };
+$('#btnCsv').onclick=()=>{dl('gbr-matters.csv',buildCsv(),'text/csv');toast('Exported');};
+$('#btnIcs').onclick=()=>{const{text,n}=buildIcs();if(!n)return toast('No dated items to export');
+  dl('gbr-deadlines.ics',text,'text/calendar');toast(n+' events exported');};
+const saveJson=()=>{const c=JSON.parse(JSON.stringify(DB));
+  dl('gbr-ops-handoff.json',JSON.stringify({app:'GBR Matter Ops',saved:new Date().toISOString(),db:c},null,2),'application/json');
+  toast('Handoff file saved — the API key is not in it');};
+$('#btnJson').onclick=saveJson; $('#btnJson2').onclick=saveJson;
+const openJson=()=>$('#loader').click();
+$('#btnLoad').onclick=openJson; $('#btnLoad2').onclick=openJson;
+$('#loader').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=async()=>{
+    try{
+      const inc=JSON.parse(String(r.result)).db||{};
+      const byDk=new Map(DB.matters.map(m=>[norm(m.docket)||m.file,m]));
+      let a=0,u=0;
+      (inc.matters||[]).forEach(m=>{
+        const k=norm(m.docket)||m.file;
+        if(k&&byDk.has(k)){Object.assign(byDk.get(k),m,{id:byDk.get(k).id});u++;}
+        else{DB.matters.push(m);a++;}
+      });
+      ['discovery','records','tasks','letters'].forEach(c=>{
+        const have=new Set(DB[c].map(x=>x.id));
+        (inc[c]||[]).forEach(x=>{if(!have.has(x.id))DB[c].push(x);});
+      });
+      await save();renderAll();toast(`${a} matters added, ${u} updated`);
+    }catch(err){toast('That file could not be read');}
+  };
+  r.readAsText(f);e.target.value='';
+};
+$('#btnSaveSet').onclick=async()=>{
+  WHO=$('#setWho').value; APIKEY=$('#setKey').value.trim();
+  await Store.set(K_WHO,WHO); await Store.set(K_KEY,APIKEY);
+  renderAll(); toast('Saved');
+};
+$('#btnClearKey').onclick=async()=>{APIKEY='';$('#setKey').value='';await Store.set(K_KEY,'');paintKey();toast('Key removed');};
+$('#btnWipe').onclick=async()=>{
+  if(!confirm('Erase every matter, task, record, and letter in this browser? Export a handoff file first.')) return;
+  DB={matters:[],discovery:[],records:[],tasks:[],letters:[],log:[]};
+  await save();renderAll();toast('Erased');
+};
+$('#calcFrom').value=iso(TODAY);
+boot();
+
+/* Installable-app support. Service workers require http(s) — opening this
+   file directly (file://) still works fully, it just won't offer "Install"
+   or cache for offline use; that needs the app hosted somewhere. */
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('./service-worker.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
