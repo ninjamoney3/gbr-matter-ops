@@ -422,6 +422,17 @@ tbody tr:hover td{background:#FCFCFA}
     </div>
   </div>
   <div class="card">
+    <h3>Shared folder sync</h3>
+    <p class="note">Connect a folder — e.g. a spot on the firm's S: drive — and this browser keeps a shared file there up to date automatically: on every change you make, and every couple of minutes in the background, so you also pick up everyone else's edits without doing anything. It merges rather than overwrites, so it can't silently erase someone's newer edit or bring back something that was deleted. Everyone who wants to share data points this at the exact same folder. Chrome or Edge only.</p>
+    <div id="syncStatus" style="margin:11px 0"></div>
+    <div class="row">
+      <button class="primary" id="btnSyncConnect">Connect a folder…</button>
+      <button id="btnSyncResume" hidden>Resume syncing</button>
+      <button id="btnSyncNow" hidden>Sync now</button>
+      <button class="ghost" id="btnSyncDisconnect" hidden>Disconnect</button>
+    </div>
+  </div>
+  <div class="card">
     <h3>Standing rules baked into this app</h3>
     <ul style="font-size:13px;line-height:1.9;padding-left:19px" id="setRules"></ul>
   </div>
@@ -432,7 +443,10 @@ tbody tr:hover td{background:#FCFCFA}
 "use strict";
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const K_DATA='gbr-ops-v1', K_KEY='gbr-ops-key', K_WHO='gbr-ops-who';
-let DB={matters:[],discovery:[],records:[],tasks:[],letters:[],log:[]};
+/* `deleted` holds tombstones {id, at} per collection so a sync merge never
+   resurrects something someone deleted — see mergeDB() below. */
+let DB={matters:[],discovery:[],records:[],tasks:[],letters:[],log:[],
+  deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[]}};
 let APIKEY='', WHO='CJG';
 const TODAY=sod(new Date());
 
@@ -602,6 +616,47 @@ function seed(){
  return [];
 }
 function uid(){return 'x'+Math.random().toString(36).slice(2,10);}
+/* Sync bookkeeping: every record gets a real timestamp (not the day-only
+   `lastActivity` field used for the stale-file display) so a folder sync
+   can tell whose copy of a record is newer. Deleting a record leaves a
+   tombstone instead of just vanishing, so a sync doesn't bring it back. */
+function touch(rec){ rec._updatedAt=new Date().toISOString(); return rec; }
+function tomb(coll,id){ (DB.deleted[coll]=DB.deleted[coll]||[]).push({id,at:new Date().toISOString()}); }
+
+/* Whole-record last-write-wins merge, keyed by docket for matters (so two
+   machines that each added "the same" new matter before ever syncing
+   converge onto one record) and by id for everything else. Tombstones are
+   unioned so a delete on one machine sticks even if a stale copy of the
+   same record arrives later from a machine that hadn't synced yet. Used by
+   both the manual handoff-file import and the automatic folder sync, so
+   the two behave identically. */
+const MERGE_COLLS=['matters','discovery','records','tasks','letters'];
+function mergeKey(coll,rec){ return coll==='matters' ? (norm(rec.docket)||rec.file||rec.id) : rec.id; }
+function mergeDB(local,incoming){
+  const TOMB_TTL_DAYS=400, cutoff=new Date(Date.now()-TOMB_TTL_DAYS*864e5).toISOString();
+  const out={matters:[],discovery:[],records:[],tasks:[],letters:[],log:local.log||[],
+    deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[]}};
+  MERGE_COLLS.forEach(coll=>{
+    const delMap=new Map();
+    [...((local.deleted&&local.deleted[coll])||[]),...((incoming.deleted&&incoming.deleted[coll])||[])]
+      .forEach(t=>{ const cur=delMap.get(t.id); if(!cur||t.at>cur) delMap.set(t.id,t.at); });
+    const byKey=new Map();
+    const consider=rec=>{
+      const k=mergeKey(coll,rec), cur=byKey.get(k);
+      if(!cur){ byKey.set(k,rec); return; }
+      if((rec._updatedAt||'')>(cur._updatedAt||'')) byKey.set(k,Object.assign({},rec,{id:cur.id}));
+    };
+    (local[coll]||[]).forEach(consider);
+    (incoming[coll]||[]).forEach(consider);
+    byKey.forEach(rec=>{
+      const delAt=delMap.get(rec.id);
+      if(delAt && delAt>=(rec._updatedAt||'')) return; // still deleted
+      out[coll].push(rec);
+    });
+    out.deleted[coll]=[...delMap.entries()].map(([id,at])=>({id,at})).filter(t=>t.at>=cutoff);
+  });
+  return out;
+}
 
 /* ══════════ STORAGE ══════════ */
 const Store={
@@ -610,15 +665,129 @@ const Store={
  async set(k,v){ if(window.storage){try{await window.storage.set(k,v);return true}catch(e){}}
    try{localStorage.setItem(k,v);return true}catch(e){return false} }
 };
+
+/* ══════════ SHARED FOLDER SYNC ══════════
+   Optional: connect a folder (e.g. on the firm's S: drive) and this browser
+   keeps one JSON file there in sync with matters/discovery/records/tasks/
+   letters — on every local change (debounced) and on a slow poll, so you
+   also pick up other people's edits without touching anything. Chrome/Edge
+   only (File System Access API). Always merges via mergeDB() above rather
+   than overwriting, so it can't silently clobber a newer edit or bring
+   back something someone deleted — and it's always best-effort: a slow or
+   disconnected drive never blocks local saving, it just retries later. */
+const SYNC_FILE='gbr-ops-sync.json';
+const IDB={
+  _db:null,
+  open(){ if(this._db) return Promise.resolve(this._db);
+    return new Promise((res,rej)=>{
+      const rq=indexedDB.open('gbr-ops-fs',1);
+      rq.onupgradeneeded=()=>rq.result.createObjectStore('kv');
+      rq.onsuccess=()=>{ this._db=rq.result; res(this._db); };
+      rq.onerror=()=>rej(rq.error);
+    });
+  },
+  async get(k){ const db=await this.open(); return new Promise((res,rej)=>{
+    const tx=db.transaction('kv','readonly'), rq=tx.objectStore('kv').get(k);
+    rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error);
+  });},
+  async set(k,v){ const db=await this.open(); return new Promise((res,rej)=>{
+    const tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k);
+    tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error);
+  });},
+  async del(k){ const db=await this.open(); return new Promise((res,rej)=>{
+    const tx=db.transaction('kv','readwrite'); tx.objectStore('kv').delete(k);
+    tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error);
+  });}
+};
+const SyncFS={
+  supported: typeof window.showDirectoryPicker==='function',
+  handle:null,
+  status:{state:'off',name:'',lastSyncedAt:null,error:''}, // off | needs-permission | syncing | synced | error
+  _debounce:null, _timer:null,
+
+  async init(){
+    if(!this.supported) return;
+    let h; try{ h=await IDB.get('dir'); }catch(e){ return; }
+    if(!h) return;
+    this.handle=h; this.status.name=h.name;
+    try{
+      const perm=await h.queryPermission({mode:'readwrite'});
+      if(perm==='granted'){ await this.sync(); this._startTimer(); }
+      else{ this.status.state='needs-permission'; renderSyncStatus(); }
+    }catch(e){ this.status.state='needs-permission'; renderSyncStatus(); }
+  },
+  async connect(){
+    if(!this.supported) return toast('Folder sync needs Chrome or Edge.');
+    let h; try{ h=await window.showDirectoryPicker({mode:'readwrite'}); }
+    catch(e){ return; } // user cancelled the picker
+    this.handle=h; this.status.name=h.name;
+    await IDB.set('dir',h);
+    await this.sync();
+    this._startTimer();
+  },
+  async resume(){
+    if(!this.handle) return this.connect();
+    try{
+      const perm=await this.handle.requestPermission({mode:'readwrite'});
+      if(perm!=='granted'){ this.status.state='needs-permission'; renderSyncStatus(); return; }
+      await this.sync(); this._startTimer();
+    }catch(e){ this.status.state='error'; this.status.error=String((e&&e.message)||e); renderSyncStatus(); }
+  },
+  async disconnect(){
+    this._stopTimer();
+    this.handle=null; this.status={state:'off',name:'',lastSyncedAt:null,error:''};
+    try{ await IDB.del('dir'); }catch(e){}
+    renderSyncStatus();
+    toast('Disconnected — this browser stops syncing to that folder (the file itself is untouched)');
+  },
+  scheduleSync(){
+    if(!this.handle || this.status.state==='needs-permission') return;
+    clearTimeout(this._debounce);
+    this._debounce=setTimeout(()=>this.sync(),900);
+  },
+  _startTimer(){ this._stopTimer(); this._timer=setInterval(()=>this.sync(),120000); },
+  _stopTimer(){ if(this._timer) clearInterval(this._timer); this._timer=null; },
+  async sync(){
+    if(!this.handle) return;
+    try{
+      const perm=await this.handle.queryPermission({mode:'readwrite'});
+      if(perm!=='granted'){ this.status.state='needs-permission'; renderSyncStatus(); return; }
+      this.status.state='syncing'; renderSyncStatus();
+      const fh=await this.handle.getFileHandle(SYNC_FILE,{create:true});
+      const text=await (await fh.getFile()).text();
+      let incoming={matters:[],discovery:[],records:[],tasks:[],letters:[],deleted:{}};
+      if(text.trim()){ try{ incoming=JSON.parse(text).db||incoming; }catch(e){} }
+      const merged=mergeDB(DB,incoming);
+      DB.matters=merged.matters; DB.discovery=merged.discovery; DB.records=merged.records;
+      DB.tasks=merged.tasks; DB.letters=merged.letters; DB.deleted=merged.deleted;
+      await save();
+      const w=await fh.createWritable();
+      await w.write(JSON.stringify({app:'GBR Matter Ops',saved:new Date().toISOString(),db:merged},null,2));
+      await w.close();
+      this.status={state:'synced',name:this.handle.name,lastSyncedAt:new Date(),error:''};
+      renderAll();
+    }catch(e){
+      this.status.state='error'; this.status.error=String((e&&e.message)||e);
+    }
+    renderSyncStatus();
+  }
+};
+
+function normalizeDeleted(){
+  DB.deleted=DB.deleted||{};
+  MERGE_COLLS.forEach(c=>{ DB.deleted[c]=DB.deleted[c]||[]; });
+}
 async function save(){ const ok=await Store.set(K_DATA,JSON.stringify(DB));
   if(!ok) toast('Could not save in this browser — use Save handoff file'); }
 async function boot(){
   const raw=await Store.get(K_DATA);
   if(raw){ try{ DB=Object.assign(DB,JSON.parse(raw)); }catch(e){} }
   if(!DB.matters) DB.matters=seed();
+  normalizeDeleted();
   APIKEY=(await Store.get(K_KEY))||'';
   WHO=(await Store.get(K_WHO))||'CJG';
   renderAll();
+  SyncFS.init();
 }
 
 /* ══════════ DERIVATIONS ══════════ */
@@ -829,7 +998,8 @@ function openMatter(m){
   $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
   if(!isNew) $('#e_del').onclick=async()=>{
     if(!confirm('Delete '+m.name+'? This cannot be undone.')) return;
-    DB.matters=DB.matters.filter(x=>x.id!==m.id); await save(); renderAll(); $('#modalHost').innerHTML='';toast('Deleted');
+    tomb('matters',m.id);
+    DB.matters=DB.matters.filter(x=>x.id!==m.id); await save(); SyncFS.scheduleSync(); renderAll(); $('#modalHost').innerHTML='';toast('Deleted');
   };
   $('#e_save').onclick=async()=>{
     const g=i=>$('#e_'+i).value;
@@ -839,8 +1009,9 @@ function openMatter(m){
       originalDED:g('oded'),currentDED:g('cded'),arbitration:g('arb'),trial:g('trial'),sol:g('sol'),
       consent:g('consent'),motion:g('motion'),records:g('records'),depo:g('depo').trim(),ime:g('ime').trim(),
       notes:g('notes').trim(),lastActivity:iso(TODAY)});
+    touch(m);
     if(isNew) DB.matters.push(m);
-    await save(); renderAll(); $('#modalHost').innerHTML=''; toast(isNew?'Matter added':'Saved');
+    await save(); SyncFS.scheduleSync(); renderAll(); $('#modalHost').innerHTML=''; toast(isNew?'Matter added':'Saved');
   };
 }
 
@@ -935,8 +1106,8 @@ function renderDiscovery(){
       <td><span class="pill ${x.status==='Complete'?'p-green':x.status==='Overdue'?'p-red':'p-grey'}">${esc(x.status)}</span></td>
       <td><button class="sm" data-dd="${x.id}">Done</button> <button class="sm" data-dx="${x.id}">×</button></td></tr>`;
   }).join('');
-  $$('[data-dd]').forEach(b=>b.onclick=async()=>{const x=DB.discovery.find(i=>i.id===b.dataset.dd);x.status='Complete';await save();renderAll();});
-  $$('[data-dx]').forEach(b=>b.onclick=async()=>{DB.discovery=DB.discovery.filter(i=>i.id!==b.dataset.dx);await save();renderAll();});
+  $$('[data-dd]').forEach(b=>b.onclick=async()=>{const x=DB.discovery.find(i=>i.id===b.dataset.dd);x.status='Complete';touch(x);await save();SyncFS.scheduleSync();renderAll();});
+  $$('[data-dx]').forEach(b=>b.onclick=async()=>{tomb('discovery',b.dataset.dx);DB.discovery=DB.discovery.filter(i=>i.id!==b.dataset.dx);await save();SyncFS.scheduleSync();renderAll();});
 }
 function newDiscovery(){
   const mid=$('#discMatter').value; if(!mid) return toast('Pick a matter first');
@@ -971,9 +1142,9 @@ function newDiscovery(){
     const t=DISC_TYPES.find(x=>x.t===$('#d_item').value), s=pd($('#d_served').value);
     const due = t.manual ? ($('#d_manual')?$('#d_manual').value:'') : iso(roll(add(s,t.d)));
     if(t.manual && !due) return toast('Enter the due date shown on the document');
-    DB.discovery.push({id:uid(),matterId:mid,item:t.t,authority:t.a,direction:$('#d_dir').value,
-      served:$('#d_served').value,dueDate:due,status:'Outstanding'});
-    await save();renderAll();$('#modalHost').innerHTML='';toast('Logged');
+    DB.discovery.push(touch({id:uid(),matterId:mid,item:t.t,authority:t.a,direction:$('#d_dir').value,
+      served:$('#d_served').value,dueDate:due,status:'Outstanding'}));
+    await save();SyncFS.scheduleSync();renderAll();$('#modalHost').innerHTML='';toast('Logged');
   };
 }
 
@@ -999,10 +1170,10 @@ function renderRecords(){
     const r=DB.records.find(i=>i.id===b.dataset.rn);
     r.stage=Math.min(r.stage+1,CHASE.length-1);
     r.nextFollowUp=iso(roll(add(pd(r.requested),CHASE[r.stage])));
-    await save();renderAll();toast('Follow-up logged');});
+    touch(r);await save();SyncFS.scheduleSync();renderAll();toast('Follow-up logged');});
   $$('[data-rr]').forEach(b=>b.onclick=async()=>{
-    const r=DB.records.find(i=>i.id===b.dataset.rr);r.status='Received';await save();renderAll();});
-  $$('[data-rx]').forEach(b=>b.onclick=async()=>{DB.records=DB.records.filter(i=>i.id!==b.dataset.rx);await save();renderAll();});
+    const r=DB.records.find(i=>i.id===b.dataset.rr);r.status='Received';touch(r);await save();SyncFS.scheduleSync();renderAll();});
+  $$('[data-rx]').forEach(b=>b.onclick=async()=>{tomb('records',b.dataset.rx);DB.records=DB.records.filter(i=>i.id!==b.dataset.rx);await save();SyncFS.scheduleSync();renderAll();});
 }
 function newRecord(){
   const mid=$('#recMatter').value; if(!mid) return toast('Pick a matter first');
@@ -1020,9 +1191,9 @@ function newRecord(){
   $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
   $('#r_save').onclick=async()=>{
     const req=$('#r_req').value; if(!$('#r_prov').value.trim()) return toast('Provider name required');
-    DB.records.push({id:uid(),matterId:mid,provider:$('#r_prov').value.trim(),requested:req,
-      auth:$('#r_auth').value,stage:0,nextFollowUp:iso(roll(add(pd(req),CHASE[0]))),status:'Outstanding'});
-    await save();renderAll();$('#modalHost').innerHTML='';toast('Added to the chase board');
+    DB.records.push(touch({id:uid(),matterId:mid,provider:$('#r_prov').value.trim(),requested:req,
+      auth:$('#r_auth').value,stage:0,nextFollowUp:iso(roll(add(pd(req),CHASE[0]))),status:'Outstanding'}));
+    await save();SyncFS.scheduleSync();renderAll();$('#modalHost').innerHTML='';toast('Added to the chase board');
   };
 }
 function fillMatterSelect(sel,live){
@@ -1178,11 +1349,11 @@ function renderLetters(){
   }).join('');
   $$('[data-la]').forEach(b=>b.onclick=async()=>{const l=DB.letters.find(x=>x.id===b.dataset.la);
     if(WHO!=='CJG'&&!confirm('Only CJG approves outgoing letters. Approve anyway?'))return;
-    l.status='Approved';l.approvedBy=WHO;await save();renderAll();toast('Approved');});
+    l.status='Approved';l.approvedBy=WHO;touch(l);await save();SyncFS.scheduleSync();renderAll();toast('Approved');});
   $$('[data-lv]').forEach(b=>b.onclick=()=>{const l=DB.letters.find(x=>x.id===b.dataset.lv);
     $('#ltrOut').innerHTML=l.raw?`<div class="lh" id="lhPrint">${l.text}</div>`:letterhead(l.text);
     window.scrollTo({top:0,behavior:'smooth'});});
-  $$('[data-lx]').forEach(b=>b.onclick=async()=>{DB.letters=DB.letters.filter(x=>x.id!==b.dataset.lx);await save();renderAll();});
+  $$('[data-lx]').forEach(b=>b.onclick=async()=>{tomb('letters',b.dataset.lx);DB.letters=DB.letters.filter(x=>x.id!==b.dataset.lx);await save();SyncFS.scheduleSync();renderAll();});
 }
 
 /* ══════════ BILLING SCRUB ══════════ */
@@ -1260,8 +1431,8 @@ function renderTasks(){
             <button class="sm ghost" data-tx="${t.id}">×</button></div></div>`;}).join('')
         : '<p class="note">Nothing here.</p>'}</div>`;
   }).join('');
-  $$('[data-tk]').forEach(c=>c.onclick=async()=>{const t=DB.tasks.find(x=>x.id===c.dataset.tk);t.done=true;await save();renderAll();});
-  $$('[data-tx]').forEach(b=>b.onclick=async()=>{DB.tasks=DB.tasks.filter(x=>x.id!==b.dataset.tx);await save();renderAll();});
+  $$('[data-tk]').forEach(c=>c.onclick=async()=>{const t=DB.tasks.find(x=>x.id===c.dataset.tk);t.done=true;touch(t);await save();SyncFS.scheduleSync();renderAll();});
+  $$('[data-tx]').forEach(b=>b.onclick=async()=>{tomb('tasks',b.dataset.tx);DB.tasks=DB.tasks.filter(x=>x.id!==b.dataset.tx);await save();SyncFS.scheduleSync();renderAll();});
 }
 function newTask(){
   $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:520px">
@@ -1279,9 +1450,9 @@ function newTask(){
   $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
   $('#t_save').onclick=async()=>{
     if(!$('#t_title').value.trim())return toast('Give it a title');
-    DB.tasks.push({id:uid(),title:$('#t_title').value.trim(),owner:$('#t_owner').value,
-      due:$('#t_due').value,matterId:$('#t_matter').value||null,done:false});
-    await save();renderAll();$('#modalHost').innerHTML='';toast('Task added');
+    DB.tasks.push(touch({id:uid(),title:$('#t_title').value.trim(),owner:$('#t_owner').value,
+      due:$('#t_due').value,matterId:$('#t_matter').value||null,done:false}));
+    await save();SyncFS.scheduleSync();renderAll();$('#modalHost').innerHTML='';toast('Task added');
   };
 }
 
@@ -1458,7 +1629,8 @@ function renderAll(){
   $('#draftBanner').innerHTML = DB.matters.length ? '' : `<div class="info">
     <strong>No matters loaded yet.</strong> Add one by hand from Intake or Matters, drop a scanned notice or order
     to have it read automatically, or open a handoff file from a colleague (Settings → Open handoff file) to bring
-    in an existing list. Nothing here is shared with anyone else until you export and send a handoff file yourself.</div>`;
+    in an existing list. Nothing here leaves this browser unless you connect a shared folder or send a handoff
+    file yourself — see Settings.</div>`;
   const of_=$('#fOwner');
   if(of_.options.length<=1) of_.innerHTML='<option value="">All timekeepers</option>'+PEOPLE.map(p=>`<option value="${p.i}">${p.i}</option>`).join('');
   $('#setWho').innerHTML=PEOPLE.map(p=>`<option value="${p.i}"${p.i===WHO?' selected':''}>${p.i} — ${p.n}</option>`).join('');
@@ -1466,9 +1638,39 @@ function renderAll(){
   $('#setRules').innerHTML=STANDING.map(s=>`<li>${esc(s)}</li>`).join('');
   $('#billRules').innerHTML=SCRUB.map(r=>`<div style="padding:7px 0;border-bottom:1px solid var(--rule2)">
     <strong style="font-size:12.5px">${esc(r.n)}</strong><div class="note">${esc(r.why)}</div></div>`).join('');
-  paintKey();
+  paintKey(); renderSyncStatus();
   renderDash();renderMatters();renderDeadlines();renderDiscovery();renderRecords();
   renderLetters();renderTasks();renderDirectory();
+}
+function timeAgo(d){
+  const s=Math.max(0,Math.round((Date.now()-d.getTime())/1000));
+  if(s<60) return 'just now';
+  const m=Math.round(s/60); if(m<60) return m+' min ago';
+  const h=Math.round(m/60); if(h<24) return h+' hr ago';
+  return fmt(d);
+}
+function renderSyncStatus(){
+  const el=$('#syncStatus'); if(!el) return;
+  const s=SyncFS.status;
+  const btnConnect=$('#btnSyncConnect'), btnResume=$('#btnSyncResume'), btnNow=$('#btnSyncNow'), btnDisc=$('#btnSyncDisconnect');
+  if(!SyncFS.supported){
+    el.innerHTML=`<p class="note">This browser doesn't support folder sync (Chrome or Edge only). Use Save/Open handoff file to share data instead.</p>`;
+    [btnConnect,btnResume,btnNow,btnDisc].forEach(b=>{ if(b) b.hidden=true; });
+    return;
+  }
+  const ago=s.lastSyncedAt?timeAgo(s.lastSyncedAt):'';
+  const views={
+    off:()=>`<p class="note">Not connected. Matters stay only in this browser until you connect a folder or use a handoff file.</p>`,
+    'needs-permission':()=>`<div class="warn">Sync paused — this browser needs you to confirm access to <strong>${esc(s.name)}</strong> again (browsers ask again after a restart or a while idle). Click Resume syncing.</div>`,
+    syncing:()=>`<p class="note">Syncing with <strong>${esc(s.name)}</strong>…</p>`,
+    synced:()=>`<p class="note">Synced with <strong>${esc(s.name)}</strong> — last synced ${ago}.</p>`,
+    error:()=>`<div class="alert">Sync error on <strong>${esc(s.name)}</strong>: ${esc(s.error)}. Your local copy is safe; this will retry automatically, or click Sync now.</div>`
+  };
+  el.innerHTML=(views[s.state]||views.off)();
+  if(btnConnect) btnConnect.hidden=s.state!=='off';
+  if(btnResume) btnResume.hidden=s.state!=='needs-permission';
+  if(btnNow) btnNow.hidden=s.state==='off';
+  if(btnDisc) btnDisc.hidden=s.state==='off';
 }
 function paintKey(){
   const b=$('#keyBanner');
@@ -1512,9 +1714,9 @@ $('#btnGenLtr').onclick=async()=>{
   const text=isForm?hipaaForm(m):buildLetter(kind,m);
   // The HIPAA authorization is a standalone form - it does not go on letterhead.
   $('#ltrOut').innerHTML=isForm?`<div class="lh" id="lhPrint">${text}</div>`:letterhead(text);
-  DB.letters.push({id:uid(),matterId:m.id,type:def.t,by:WHO,
-    date:iso(TODAY),status:'Pending',text,raw:isForm});
-  await save();renderLetters();toast('Drafted — sitting in the approval queue');
+  DB.letters.push(touch({id:uid(),matterId:m.id,type:def.t,by:WHO,
+    date:iso(TODAY),status:'Pending',text,raw:isForm}));
+  await save();SyncFS.scheduleSync();renderLetters();toast('Drafted — sitting in the approval queue');
 };
 $('#btnPrintLtr').onclick=()=>{ if(!$('#lhPrint')) return toast('Generate a letter first'); window.print(); };
 $('#btnCsv').onclick=()=>{dl('gbr-matters.csv',buildCsv(),'text/csv');toast('Exported');};
@@ -1532,18 +1734,13 @@ $('#loader').onchange=e=>{
   r.onload=async()=>{
     try{
       const inc=JSON.parse(String(r.result)).db||{};
-      const byDk=new Map(DB.matters.map(m=>[norm(m.docket)||m.file,m]));
+      const localKeys=new Set(DB.matters.map(m=>mergeKey('matters',m)));
       let a=0,u=0;
-      (inc.matters||[]).forEach(m=>{
-        const k=norm(m.docket)||m.file;
-        if(k&&byDk.has(k)){Object.assign(byDk.get(k),m,{id:byDk.get(k).id});u++;}
-        else{DB.matters.push(m);a++;}
-      });
-      ['discovery','records','tasks','letters'].forEach(c=>{
-        const have=new Set(DB[c].map(x=>x.id));
-        (inc[c]||[]).forEach(x=>{if(!have.has(x.id))DB[c].push(x);});
-      });
-      await save();renderAll();toast(`${a} matters added, ${u} updated`);
+      (inc.matters||[]).forEach(m=>{ const k=mergeKey('matters',m); if(k&&localKeys.has(k)) u++; else a++; });
+      const merged=mergeDB(DB,inc);
+      DB.matters=merged.matters; DB.discovery=merged.discovery; DB.records=merged.records;
+      DB.tasks=merged.tasks; DB.letters=merged.letters; DB.deleted=merged.deleted;
+      await save();SyncFS.scheduleSync();renderAll();toast(`${a} matters added, ${u} updated`);
     }catch(err){toast('That file could not be read');}
   };
   r.readAsText(f);e.target.value='';
@@ -1555,9 +1752,16 @@ $('#btnSaveSet').onclick=async()=>{
 };
 $('#btnClearKey').onclick=async()=>{APIKEY='';$('#setKey').value='';await Store.set(K_KEY,'');paintKey();toast('Key removed');};
 $('#btnWipe').onclick=async()=>{
-  if(!confirm('Erase every matter, task, record, and letter in this browser? Export a handoff file first.')) return;
-  DB={matters:[],discovery:[],records:[],tasks:[],letters:[],log:[]};
+  const synced=SyncFS.handle?' This browser is connected to a shared folder — it only clears your local view; the shared file is untouched, and your next sync will bring everything right back. Disconnect first if you actually want it gone from the shared folder too.':'';
+  if(!confirm('Erase every matter, task, record, and letter in this browser? Export a handoff file first.'+synced)) return;
+  DB={matters:[],discovery:[],records:[],tasks:[],letters:[],log:[],deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[]}};
   await save();renderAll();toast('Erased');
+};
+$('#btnSyncConnect').onclick=()=>SyncFS.connect();
+$('#btnSyncResume').onclick=()=>SyncFS.resume();
+$('#btnSyncNow').onclick=()=>SyncFS.sync();
+$('#btnSyncDisconnect').onclick=()=>{
+  if(confirm('Stop syncing this browser to "'+SyncFS.status.name+'"? The shared file itself is left exactly as it is — other people stay connected.')) SyncFS.disconnect();
 };
 $('#calcFrom').value=iso(TODAY);
 boot();

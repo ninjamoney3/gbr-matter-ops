@@ -14,9 +14,8 @@ app rather than just use it, start in the private repo.
 
 ## Install it as an app
 
-Once GitHub Pages finishes its first deploy, this app is installable — a
-real window, a taskbar/dock/home-screen icon, and offline use of everything
-except AI document reading:
+This app is installable — a real window, a taskbar/dock/home-screen icon,
+and offline use of everything except AI document reading:
 
 - **Chrome / Edge (Windows/Mac/Linux):** open the Pages link, click the
   install icon in the address bar (or ⋮ menu → "Install Matter Ops…"). It
@@ -48,13 +47,15 @@ only when you drop a document to read and only if you've entered your own
 API key, a direct call to Anthropic with that document — nothing else,
 checked by grepping the source for every `fetch`/`XMLHttpRequest`.
 
-To share a matter list between people, use **Settings → Save handoff
-file**, hand the resulting `.json` off some way your firm already trusts
-with client data (your shared drive, OneDrive — not this git repo), and the
-other person uses **Settings → Open handoff file**. Matching docket numbers
-update in place instead of duplicating. **Never save a handoff file into
-this repository** — that's the one way real data could actually end up
-public here.
+To share a matter list between people, either connect everyone to the same
+**shared folder** (see below — no manual steps once it's connected) or use
+**Settings → Save handoff file**, hand the resulting `.json` off some way
+your firm already trusts with client data (your shared drive, OneDrive —
+not this git repo), and the other person uses **Settings → Open handoff
+file**. Matching docket numbers update in place instead of duplicating.
+**Never save a handoff file into this repository, and never point the
+shared-folder sync at a folder inside it** — that's the one way real data
+could actually end up public here.
 
 ## Per-person setup
 
@@ -65,6 +66,43 @@ public here.
   drag-and-drop document reader (Intake tab). Stored in that browser only,
   never included in a handoff file or synced anywhere. Everything else
   (deadlines, letters, matters, billing scrub, exports) works with no key.
+
+## Shared folder sync (S: drive, etc.)
+
+**Settings → Shared folder sync** connects a folder — point it at a spot on
+the firm's S: drive — and that browser keeps a shared file there up to date
+automatically: on every change you make, and every couple of minutes in the
+background, so you also pick up everyone else's edits without doing
+anything. Everyone who wants to share data connects to the exact same
+folder. Chrome or Edge only (uses the File System Access API); other
+browsers fall back to the manual handoff-file workflow above.
+
+**How it stays safe** — this is file-based sync between browsers, not a
+real multi-user database, so it's built to fail safe rather than fail
+silent:
+
+- Every record carries its own timestamp. A sync only ever replaces a
+  record with a **newer** one — an older or stale copy arriving late can
+  never overwrite an edit that's already newer, in either direction.
+- Deleting something leaves a tombstone. A sync will not resurrect a
+  record someone deleted just because a machine that hadn't synced yet
+  still has an old copy of it.
+- Sync is always best-effort and never blocks local work — your own save
+  to this browser always succeeds first; if the drive is slow, offline, or
+  the connection needs re-confirming, you keep working locally and it
+  catches up (or asks you to click **Resume syncing**) next time around.
+
+**What it doesn't do**: this is not real-time — two people editing the
+exact same field on the exact same record at literally the same moment
+will have one edit win (whichever finishes syncing last), the same
+limitation as two people editing one cell of a shared spreadsheet without
+live collaboration. For how this firm actually works — different
+timekeepers on different files, edits minutes or hours apart, not the same
+field at the same second — that's not a real-world problem. **Erase
+everything** in Settings only ever clears your own browser's view; if a
+sync folder is connected, your next sync brings it right back from the
+shared copy, which is the point — disconnect first if you actually want
+data gone from the shared folder too.
 
 ## Rule citations — verification status
 
@@ -124,7 +162,7 @@ Edit the source in the private `legal` repo's `matter-ops/` folder, then
 copy the changed files over here (`index.html`, `manifest.webmanifest`,
 `service-worker.js`, `icons/`, `README.md` if it changed) and push to
 `main` — the workflow redeploys automatically. Bump `CACHE_NAME` in
-`service-worker.js` (e.g. `gbr-matter-ops-shell-v2`) on any change to
+`service-worker.js` (e.g. `gbr-matter-ops-shell-v3`) on any change to
 `index.html` so installed copies pick up it instead of serving a stale
 cached version. Real matter data never belongs in this repo — see
 Confidentiality above.
