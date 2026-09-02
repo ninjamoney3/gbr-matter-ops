@@ -69,24 +69,28 @@ could actually end up public here.
   Get one at console.anthropic.com (pay-as-you-go; reading a document costs
   a small fraction of a cent to a few cents).
 
-### What the document reader (Intake tab) understands
+### What the document reader understands
 
 Drop a **PDF, PNG, or JPG** — Word/Excel files aren't readable directly; save
 or print them to PDF first, and the app will tell you that plainly if you
 try anyway rather than failing with a confusing error.
 
 - **Court documents** — track assignment notices, orders extending
-  discovery, arbitration/trial notices, complaints — get matched to an
-  existing matter by docket number, or start a new matter with the fields
-  pre-filled for you to check.
+  discovery, arbitration/trial notices, complaints — drop these on the
+  **Intake** tab. They get matched to an existing matter by docket number,
+  or start a new matter with the fields pre-filled for you to check.
 - **A medical providers chart** (the firm's own patient/provider tracking
-  table) gets routed differently: it's read as a list of providers, you
-  confirm which matter it belongs to (guessed for you when the patient's
-  name matches a matter caption, but always yours to confirm or change),
-  and confirmed rows are added straight to that matter's Records chase —
-  no retyping. Rows the chart shows as not yet sent are listed but left
-  unchecked by default, so nothing gets logged as "requested" before it
-  actually was.
+  table) has its own drop zone right on the **Records** tab, since that's
+  always what it's for. Drop it there and it's read as a list of providers;
+  you confirm which matter it belongs to (guessed for you when the
+  patient's name matches a matter caption, but always yours to confirm or
+  change), and the rows you keep checked are added straight to that
+  matter's Records chase — no retyping. Rows the chart shows as not yet
+  sent are listed but left unchecked by default, so nothing gets logged as
+  "requested" before it actually was. (The Intake tab's drop zone will
+  also recognize one of these charts if it lands there instead — it
+  routes off whether real provider rows come back, not any specific
+  wording, so it isn't picky about how the chart gets described.)
 
 ## Shared folder sync (S: drive, etc.)
 
