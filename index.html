@@ -225,8 +225,8 @@ tbody tr:hover td{background:#FCFCFA}
   <p class="sub">Drop a notice or order. It reads the caption, docket, and dates, then computes every downstream deadline for you to confirm.</p>
   <div id="keyBanner"></div>
   <div id="drop" tabindex="0" role="button">
-    <h3>Drop notices and orders here</h3>
-    <p>Track assignment notices, orders extending discovery, arbitration and trial notices, complaints. Several at once is fine.</p>
+    <h3>Drop notices, orders, or a medical providers chart here</h3>
+    <p>Track assignment notices, orders extending discovery, arbitration and trial notices, complaints, or a medical-providers chart — that one goes to Records chase instead, after you confirm the matter. Several at once is fine.</p>
     <p class="note">PDF · PNG · JPG</p>
     <input type="file" id="picker" multiple accept="application/pdf,image/png,image/jpeg" hidden>
   </div>
@@ -1476,7 +1476,7 @@ function renderDirectory(){
 
 /* ══════════ INTAKE ══════════ */
 const SCHEMA=`{
-"documentType":"track assignment notice | order extending discovery | arbitration notice | trial notice | notice of motion | complaint | other",
+"documentType":"track assignment notice | order extending discovery | arbitration notice | trial notice | notice of motion | complaint | medical providers chart | other",
 "caseName":"Plaintiff v. Defendant, short form, surnames only",
 "docketNumber":"exactly as printed, e.g. ESX-L-000839-24",
 "venue":"county abbreviation: ESX BER HUD UNN MRS PAS MID MON OCN SOM SSX WRN HNT CAM BUR MER CPM ATL GLO SAL CUM, or NY or USDC",
@@ -1486,6 +1486,8 @@ const SCHEMA=`{
 "arbitrationDate":"YYYY-MM-DD or null",
 "trialDate":"YYYY-MM-DD or null",
 "judge":"judge surname or null",
+"patientName":"only for a medical providers chart — the patient/plaintiff name printed at the top, else null",
+"providers":"only for a medical providers chart — array of {name, address, requestSentDate (YYYY-MM-DD or null), requestSentMethod (Mail, Fax, E-mail, or null)}, one per non-blank provider row, else null",
 "uncertain":["field names you guessed or could not read"],
 "summary":"one sentence on what this document does"
 }`;
@@ -1493,7 +1495,10 @@ async function extract(b64,mime){
   const isPdf=mime==='application/pdf';
   const block=isPdf?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}
                    :{type:'image',source:{type:'base64',media_type:mime,data:b64}};
-  const prompt=`You are reading a New Jersey Superior Court document for a civil defense firm's docketing system.
+  const prompt=`You are reading a document for a New Jersey civil defense firm's docketing system. It is either a
+Superior Court document, or a medical-providers tracking chart the firm's own staff fills in when chasing a
+plaintiff's medical records (a table headed by a patient name, with rows of provider name/address and a "date
+and how sent" request column).
 
 Extract these fields and respond with ONLY a JSON object — no markdown fences, no preamble:
 ${SCHEMA}
@@ -1501,8 +1506,12 @@ ${SCHEMA}
 Rules:
 - Dates as YYYY-MM-DD. If a date is not printed, use null. Never infer or calculate a date.
 - "discoveryEndDate" is the DED. On an order extending discovery, use the NEW end date.
+- If this is a medical providers chart: set documentType to "medical providers chart", fill patientName and
+  providers, and leave the court-document fields (caseName, docketNumber, etc.) null. Skip template rows with
+  no provider name filled in. requestSentDate/requestSentMethod are null for a row that hasn't been sent yet.
 - List anything you are unsure about in "uncertain" so a human checks it.
-- If this is not a court document, set documentType to "other" and leave dates null.`;
+- If this is neither a court document nor a medical providers chart, set documentType to "other" and leave
+  every other field null.`;
   const body=JSON.stringify({model:'claude-sonnet-5',max_tokens:1000,
     messages:[{role:'user',content:[block,{type:'text',text:prompt}]}]});
   const headers=APIKEY
@@ -1524,6 +1533,7 @@ Rules:
 }
 function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();
   r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(new Error('Could not read this file'));r.readAsDataURL(f);});}
+const READABLE_TYPES=['application/pdf','image/png','image/jpeg'];
 async function handleFiles(files){
   for(const f of files){
     const id='j'+Math.random().toString(36).slice(2,8);
@@ -1531,6 +1541,12 @@ async function handleFiles(files){
     d.innerHTML='<div class="spin"></div><div class="nm"></div><div class="st"></div>';
     d.querySelector('.nm').textContent=f.name;d.querySelector('.st').textContent='Reading…';
     $('#queue').appendChild(d);
+    if(f.type && !READABLE_TYPES.includes(f.type)){
+      d.classList.add('err'); const s=d.querySelector('.spin'); if(s)s.remove();
+      d.querySelector('.st').textContent='Not a supported format — save or print this as a PDF first (Word, Excel, etc. can\'t be read directly).';
+      const b=document.createElement('button');b.className='sm ghost';b.textContent='Dismiss';b.onclick=()=>d.remove();d.appendChild(b);
+      continue;
+    }
     try{
       const b64=await toB64(f);
       d.querySelector('.st').textContent='Extracting dates…';
@@ -1543,7 +1559,59 @@ async function handleFiles(files){
     }
   }
 }
+function guessMatterForPatient(name){
+  if(!name) return '';
+  const last=name.trim().split(/\s+/).pop().toLowerCase();
+  if(!last) return '';
+  const hit=DB.matters.find(m=>isLive(m)&&m.name.toLowerCase().includes(last));
+  return hit?hit.id:'';
+}
+function reviewProvidersExtract(x,src){
+  const providers=(x.providers||[]).filter(p=>p&&p.name&&p.name.trim());
+  if(!providers.length){ toast('No providers found on that chart'); return; }
+  const guess=guessMatterForPatient(x.patientName);
+  $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:640px">
+    <div class="mh"><h3>Medical providers chart</h3>
+      <div class="s">${esc(x.patientName||'Patient not read from the chart')} · ${esc(src)}</div></div>
+    <div class="mb">
+      <div class="full"><label>Matter</label><select class="t" id="pc_matter"></select></div>
+      <p class="note" style="margin:8px 0 4px">Uncheck any row you don't want added. Requested date defaults to today when the chart didn't have one filled in yet.</p>
+      <div id="pc_rows" style="border:1px solid var(--rule);border-radius:6px;margin-top:6px;max-height:320px;overflow:auto"></div>
+    </div>
+    <div class="mf"><button id="pc_cancel">Cancel</button><button class="primary" id="pc_save">Add to Records chase</button></div>
+  </div></div>`;
+  fillMatterSelect('#pc_matter',true);
+  if(guess) $('#pc_matter').value=guess;
+  $('#pc_rows').innerHTML=providers.map((p,i)=>`
+    <div class="row" style="padding:8px 12px;border-bottom:1px solid var(--rule2);align-items:flex-start">
+      <input type="checkbox" data-pc="${i}" ${p.requestSentDate?'checked':''} style="width:auto;margin-top:3px">
+      <div style="flex:1">
+        <div style="font-weight:500">${esc(p.name)}</div>
+        <div class="meta">${esc(p.address||'')}</div>
+        <div class="meta mono">${p.requestSentDate?fmt(pd(p.requestSentDate)):'no date on chart — defaults to today'}${p.requestSentMethod?' · '+esc(p.requestSentMethod):''}</div>
+      </div>
+    </div>`).join('');
+  $('#pc_cancel').onclick=()=>$('#modalHost').innerHTML='';
+  $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  $('#pc_save').onclick=async()=>{
+    const mid=$('#pc_matter').value; if(!mid) return toast('Pick a matter first');
+    let n=0;
+    $$('[data-pc]').forEach(cb=>{
+      if(!cb.checked) return;
+      const p=providers[+cb.dataset.pc];
+      const req=p.requestSentDate||iso(TODAY);
+      DB.records.push(touch({id:uid(),matterId:mid,
+        provider:p.address?`${p.name} — ${p.address}`:p.name,
+        requested:req,auth:'Yes',stage:0,nextFollowUp:iso(roll(add(pd(req),CHASE[0]))),status:'Outstanding'}));
+      n++;
+    });
+    if(!n){ toast('Nothing checked'); return; }
+    await save();SyncFS.scheduleSync();renderAll();$('#modalHost').innerHTML='';
+    toast(`${n} provider${n>1?'s':''} added to Records chase`);
+  };
+}
 function reviewExtract(x,src){
+  if(x.documentType==='medical providers chart'){ reviewProvidersExtract(x,src); return; }
   const existing=x.docketNumber?DB.matters.find(m=>norm(m.docket)===norm(x.docketNumber)):null;
   const isOrder=/order|extend/i.test(x.documentType||'');
   if(existing){
