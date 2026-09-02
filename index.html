@@ -357,6 +357,13 @@ tbody tr:hover td{background:#FCFCFA}
     <div class="tw" style="margin-top:10px"><table><thead><tr><th>Matter</th><th>Letter</th><th>Drafted by</th><th>Drafted</th><th></th></tr></thead><tbody id="apprRows"></tbody></table>
     <div class="empty" id="apprEmpty">Queue is clear.</div></div>
   </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Sent letters</h3>
+    <p class="note">Everything approved, most recent first.</p>
+    <div class="row" style="margin:9px 0"><select class="t" id="sentMatterFilter" style="max-width:320px"><option value="">All matters</option></select></div>
+    <div class="tw"><table><thead><tr><th>Matter</th><th>Letter</th><th>Approved by</th><th>Approved</th><th></th></tr></thead><tbody id="sentRows"></tbody></table>
+    <div class="empty" id="sentEmpty">Nothing approved yet.</div></div>
+  </div>
 </section>
 
 <!-- ══ BILLING ══ -->
@@ -1361,6 +1368,31 @@ function renderLetters(){
     $('#ltrOut').innerHTML=l.raw?`<div class="lh" id="lhPrint">${l.text}</div>`:letterhead(l.text);
     window.scrollTo({top:0,behavior:'smooth'});});
   $$('[data-lx]').forEach(b=>b.onclick=async()=>{tomb('letters',b.dataset.lx);DB.letters=DB.letters.filter(x=>x.id!==b.dataset.lx);await save();SyncFS.scheduleSync();renderAll();});
+  renderSentLetters();
+}
+function renderSentLetters(){
+  const sent=DB.letters.filter(l=>l.status==='Approved').sort((a,b)=>(b._updatedAt||'').localeCompare(a._updatedAt||''));
+  const sel=$('#sentMatterFilter'), cur=sel.value;
+  const seen=new Map();
+  sent.forEach(l=>{ const m=mById(l.matterId); if(m&&!seen.has(m.id)) seen.set(m.id,m.name); });
+  sel.innerHTML='<option value="">All matters</option>'+[...seen.entries()].sort((a,b)=>a[1].localeCompare(b[1]))
+    .map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('');
+  sel.value=cur;
+  const filtered=sel.value?sent.filter(l=>l.matterId===sel.value):sent;
+  $('#sentEmpty').style.display=filtered.length?'none':'block';
+  $('#sentRows').innerHTML=filtered.map(l=>{
+    const m=mById(l.matterId)||{name:'(matter removed)'};
+    const when=l._updatedAt?fmt(new Date(l._updatedAt)):'—';
+    return `<tr><td><strong>${esc(m.name)}</strong></td><td>${esc(l.type)}</td>
+      <td><span class="pill p-grey">${esc(l.approvedBy||'—')}</span></td><td class="mono">${when}</td>
+      <td><button class="sm" data-sv="${l.id}">View</button> <button class="sm" data-sx="${l.id}">×</button></td></tr>`;
+  }).join('');
+  $$('[data-sv]').forEach(b=>b.onclick=()=>{const l=DB.letters.find(x=>x.id===b.dataset.sv);
+    $('#ltrOut').innerHTML=l.raw?`<div class="lh" id="lhPrint">${l.text}</div>`:letterhead(l.text);
+    window.scrollTo({top:0,behavior:'smooth'});});
+  $$('[data-sx]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Remove this from the sent-letters log? This cannot be undone.')) return;
+    tomb('letters',b.dataset.sx);DB.letters=DB.letters.filter(x=>x.id!==b.dataset.sx);await save();SyncFS.scheduleSync();renderAll();});
 }
 
 /* ══════════ BILLING SCRUB ══════════ */
@@ -1816,6 +1848,7 @@ $('#btnNewMatter').onclick=()=>openMatter(null);
 $('#btnKey').onclick=()=>{$$('#tabs button').forEach(x=>x.classList.toggle('on',x.dataset.p==='settings'));
   $$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-settings'));window.scrollTo({top:0});};
 ['fSide','fStatus','fOwner','fSearch'].forEach(i=>$('#'+i).addEventListener('input',renderMatters));
+$('#sentMatterFilter').addEventListener('input',renderSentLetters);
 ['calcRule','calcFrom','calcTrack'].forEach(i=>$('#'+i).addEventListener('input',runCalc));
 $('#btnNewDisc').onclick=newDiscovery;
 $('#btnNewRec').onclick=newRecord;

@@ -61,7 +61,9 @@ could actually end up public here.
 
 - **Settings → Timekeeper initials** — who's using this copy. Drives the
   "handling attorney" defaults and the letter-approval gate (only CJG
-  approves outgoing letters).
+  approves outgoing letters). Once approved, a letter moves from the
+  Letters tab's Pending queue down to **Sent letters** — filterable by
+  matter, reopenable to view or reprint.
 - **Settings → Anthropic API key** — optional, only needed for the
   drag-and-drop document reader (Intake tab). Stored in that browser only,
   never included in a handoff file or synced anywhere. Everything else
