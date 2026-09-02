@@ -447,6 +447,16 @@ tbody tr:hover td{background:#FCFCFA}
     </div>
   </div>
   <div class="card">
+    <h3>Google Calendar</h3>
+    <p class="note">Pushes each matter's calendar-worthy dates — file-motion-by, discovery end date, arbitration, trial, statute of limitations — to a shared Google Calendar automatically, the moment a document read or a manual edit is saved. Needs a one-time Google Cloud setup by an admin before it can be used at all (see the README); until that's done this stays off.</p>
+    <div id="gcalStatus" style="margin:11px 0"></div>
+    <div class="row">
+      <button class="primary" id="btnGcalConnect">Connect Google Calendar</button>
+      <button id="btnGcalPushAll" hidden>Push all matters now</button>
+      <button class="ghost" id="btnGcalDisconnect" hidden>Disconnect</button>
+    </div>
+  </div>
+  <div class="card">
     <h3>Standing rules baked into this app</h3>
     <ul style="font-size:13px;line-height:1.9;padding-left:19px" id="setRules"></ul>
   </div>
@@ -787,6 +797,111 @@ const SyncFS={
   }
 };
 
+/* ══════════ GOOGLE CALENDAR SYNC ══════════
+   Optional and off by default. Fill in GCAL_CLIENT_ID and GCAL_CALENDAR_ID
+   below (see README for the one-time Google Cloud setup) to turn it on —
+   until both are set, this whole feature stays inert and hidden. Once
+   connected, a matter's calendar-worthy dates push automatically to a
+   shared Google Calendar the moment a document read or manual edit is
+   saved — see the e_save handler. matterCalItems() above (also used by
+   the .ics export) is the single source of truth for which dates those
+   are, so this and the .ics export can never show something different.
+   Each matter keeps the Google event id it was given per date (m.gcal),
+   so a re-sync updates that same event instead of creating a duplicate —
+   including when a different signed-in person triggers the next sync,
+   since m.gcal travels with the matter through the shared-folder sync
+   like any other field. */
+const GCAL_CLIENT_ID='';    // OAuth 2.0 Web Client ID, e.g. '123-abc.apps.googleusercontent.com'
+const GCAL_CALENDAR_ID='';  // target calendar's ID, e.g. 'abcdef@group.calendar.google.com'
+const GCal={
+  supported: !!(GCAL_CLIENT_ID && GCAL_CALENDAR_ID),
+  token:null, tokenClient:null, email:'',
+  status:{state:'off',error:''}, // off | connecting | connected | error
+
+  init(){
+    if(!this.supported) return;
+    this._loadGis(()=>{
+      this.tokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:GCAL_CLIENT_ID,
+        scope:'https://www.googleapis.com/auth/calendar.events',
+        callback:(resp)=>{
+          if(resp.error){ this.status={state:'error',error:String(resp.error)}; renderGcalStatus(); return; }
+          this.token=resp.access_token; this.status={state:'connected',error:''};
+          this._fetchEmail(); renderGcalStatus();
+        }
+      });
+      renderGcalStatus();
+    });
+  },
+  _loadGis(cb){
+    if(window.google&&google.accounts&&google.accounts.oauth2){ cb(); return; }
+    const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true;
+    s.onload=cb; s.onerror=()=>{ this.status={state:'error',error:"Could not load Google's sign-in library."}; renderGcalStatus(); };
+    document.head.appendChild(s);
+  },
+  connect(){
+    if(!this.supported) return toast("Google Calendar isn't set up for this app yet.");
+    this.status.state='connecting'; renderGcalStatus();
+    if(this.tokenClient) this.tokenClient.requestAccessToken({prompt:'consent'});
+    else this.init();
+  },
+  disconnect(){
+    if(this.token&&window.google&&google.accounts) google.accounts.oauth2.revoke(this.token,()=>{});
+    this.token=null; this.email=''; this.status={state:'off',error:''};
+    renderGcalStatus(); toast('Disconnected from Google Calendar');
+  },
+  async _fetchEmail(){
+    try{
+      const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+this.token}});
+      if(r.ok){ const j=await r.json(); this.email=j.email||''; renderGcalStatus(); }
+    }catch(e){}
+  },
+  async _api(path,opts){
+    opts=opts||{};
+    const res=await fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(GCAL_CALENDAR_ID)+path,
+      Object.assign({},opts,{headers:Object.assign({Authorization:'Bearer '+this.token,'Content-Type':'application/json'},opts.headers||{})}));
+    if(res.status===401){ this.token=null; this.status={state:'off',error:''}; renderGcalStatus();
+      throw new Error('Google sign-in expired — reconnect in Settings.'); }
+    if(!res.ok){ let d=''; try{d=(await res.json()).error.message}catch(e){} throw new Error('Google Calendar error '+res.status+(d?': '+d:'')); }
+    if(res.status===204) return null;
+    return res.json();
+  },
+  async upsertEvent(m,it){
+    const body={summary:it.summary,description:it.description,
+      start:{date:iso(it.date)},end:{date:iso(add(it.date,1))},
+      reminders:{useDefault:false,overrides:[{method:'popup',minutes:7*24*60}]}};
+    m.gcal=m.gcal||{};
+    const existingId=m.gcal[it.key];
+    if(existingId){
+      try{ await this._api('/events/'+encodeURIComponent(existingId),{method:'PATCH',body:JSON.stringify(body)}); return; }
+      catch(e){ /* event may have been removed on the calendar directly — fall through and recreate it */ }
+    }
+    const created=await this._api('/events',{method:'POST',body:JSON.stringify(body)});
+    if(created&&created.id) m.gcal[it.key]=created.id;
+  },
+  async deleteEvent(m,key){
+    if(!m.gcal||!m.gcal[key]) return;
+    try{ await this._api('/events/'+encodeURIComponent(m.gcal[key]),{method:'DELETE'}); }catch(e){}
+    delete m.gcal[key];
+  },
+  async syncMatter(m){
+    if(this.status.state!=='connected') return;
+    try{
+      const items=matterCalItems(m), keys=new Set(items.map(i=>i.key));
+      for(const it of items) await this.upsertEvent(m,it);
+      if(m.gcal) for(const k of Object.keys(m.gcal)) if(!keys.has(k)) await this.deleteEvent(m,k);
+      touch(m); await save(); SyncFS.scheduleSync();
+    }catch(e){ toast('Google Calendar: '+e.message); }
+  },
+  async syncAllMatters(){
+    if(this.status.state!=='connected') return toast('Connect Google Calendar first.');
+    const live=DB.matters.filter(isLive);
+    toast('Pushing '+live.length+' matters to Google Calendar…');
+    for(const m of live) await this.syncMatter(m);
+    toast('Done — pushed '+live.length+' matters.');
+  }
+};
+
 function normalizeDeleted(){
   DB.deleted=DB.deleted||{};
   MERGE_COLLS.forEach(c=>{ DB.deleted[c]=DB.deleted[c]||[]; });
@@ -802,6 +917,7 @@ async function boot(){
   WHO=(await Store.get(K_WHO))||'CJG';
   renderAll();
   SyncFS.init();
+  GCal.init();
 }
 
 /* ══════════ DERIVATIONS ══════════ */
@@ -1013,6 +1129,7 @@ function openMatter(m){
   if(!isNew) $('#e_del').onclick=async()=>{
     if(!confirm('Delete '+m.name+'? This cannot be undone.')) return;
     tomb('matters',m.id);
+    if(GCal.status.state==='connected'&&m.gcal) Object.keys(m.gcal).forEach(k=>GCal.deleteEvent(m,k));
     DB.matters=DB.matters.filter(x=>x.id!==m.id); await save(); SyncFS.scheduleSync(); renderAll(); $('#modalHost').innerHTML='';toast('Deleted');
   };
   $('#e_save').onclick=async()=>{
@@ -1026,6 +1143,7 @@ function openMatter(m){
     touch(m);
     if(isNew) DB.matters.push(m);
     await save(); SyncFS.scheduleSync(); renderAll(); $('#modalHost').innerHTML=''; toast(isNew?'Matter added':'Saved');
+    if(GCal.status.state==='connected') GCal.syncMatter(m);
   };
 }
 
@@ -1722,6 +1840,24 @@ function dl(name,text,mime){const b=new Blob([text],{type:mime}),u=URL.createObj
   const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);}
 function icsD(d){return iso(d).replace(/-/g,'');}
 function icalEsc(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');}
+/* Single source of truth for a matter's calendar-worthy dates — shared by
+   the .ics export below and by GCal.syncMatter() so the two never drift
+   apart. `key` is a stable per-matter-per-date-kind id used by GCal to
+   know which Google event to update rather than duplicate. */
+function matterCalItems(m){
+  const d=derive(m), init=m.owner||'CJG', v=m.venue||'';
+  const items=[];
+  if(d.file) items.push({key:'file',date:d.file,
+    summary:`${init}: ${m.name} - FILE MOTION TO EXTEND DISCOVERY (ret ${fmt(d.ret)}) - ${v}`,
+    description:`DED ${fmt(d.ded)}. Return ${fmt(d.ret)}. R. 1:6-3(a) requires filing and service 16 days before the return date. R. 4:24-1(c) requires the motion be returnable before the discovery period ends.`
+      +(d.locked?' CAUTION: a date is already fixed - exceptional circumstances standard applies.':'')
+      +` Confirm the return date against the ${v} motion calendar.`});
+  if(d.ded) items.push({key:'ded',date:d.ded,summary:`${init}: ${m.name} - DED - ${v}`,description:`Discovery end date. Docket ${m.docket}. File ${m.file}.`});
+  const a=pd(m.arbitration); if(a) items.push({key:'arbitration',date:a,summary:`${init}: ${m.name} - ARBITRATION - ${v}`,description:`Docket ${m.docket}.`});
+  const t=pd(m.trial); if(t) items.push({key:'trial',date:t,summary:`${init}: ${m.name} - TRIAL - ${v}`,description:`Docket ${m.docket}.`});
+  const s=pd(m.sol); if(s) items.push({key:'sol',date:s,summary:`${init}: ${m.name} - STATUTE OF LIMITATIONS - ${v}`,description:`Plaintiff matter. File ${m.file}.`});
+  return items;
+}
 function buildIcs(){
   const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//GBR//Matter Ops//EN','CALSCALE:GREGORIAN'];let n=0;
   const ev=(dt,title,desc)=>{L.push('BEGIN:VEVENT','UID:'+uid()+Date.now()+'@gaul-law.com',
@@ -1729,15 +1865,7 @@ function buildIcs(){
     'SUMMARY:'+icalEsc(title),'DESCRIPTION:'+icalEsc(desc),
     'BEGIN:VALARM','TRIGGER:-P7D','ACTION:DISPLAY','DESCRIPTION:'+icalEsc(title),'END:VALARM','END:VEVENT');n++;};
   DB.matters.filter(isLive).forEach(m=>{
-    const d=derive(m), init=m.owner||'CJG', v=m.venue||'';
-    if(d.file) ev(d.file,`${init}: ${m.name} - FILE MOTION TO EXTEND DISCOVERY (ret ${fmt(d.ret)}) - ${v}`,
-      `DED ${fmt(d.ded)}. Return ${fmt(d.ret)}. R. 1:6-3(a) requires filing and service 16 days before the return date. R. 4:24-1(c) requires the motion be returnable before the discovery period ends.`
-      +(d.locked?' CAUTION: a date is already fixed - exceptional circumstances standard applies.':'')
-      +` Confirm the return date against the ${v} motion calendar.`);
-    if(d.ded) ev(d.ded,`${init}: ${m.name} - DED - ${v}`,`Discovery end date. Docket ${m.docket}. File ${m.file}.`);
-    const a=pd(m.arbitration); if(a) ev(a,`${init}: ${m.name} - ARBITRATION - ${v}`,`Docket ${m.docket}.`);
-    const t=pd(m.trial); if(t) ev(t,`${init}: ${m.name} - TRIAL - ${v}`,`Docket ${m.docket}.`);
-    const s=pd(m.sol); if(s) ev(s,`${init}: ${m.name} - STATUTE OF LIMITATIONS - ${v}`,`Plaintiff matter. File ${m.file}.`);
+    matterCalItems(m).forEach(it=>ev(it.date,it.summary,it.description));
   });
   DB.records.filter(r=>r.status!=='Received'&&r.nextFollowUp).forEach(r=>{
     const m=mById(r.matterId); if(!m) return;
@@ -1777,7 +1905,7 @@ function renderAll(){
   $('#setRules').innerHTML=STANDING.map(s=>`<li>${esc(s)}</li>`).join('');
   $('#billRules').innerHTML=SCRUB.map(r=>`<div style="padding:7px 0;border-bottom:1px solid var(--rule2)">
     <strong style="font-size:12.5px">${esc(r.n)}</strong><div class="note">${esc(r.why)}</div></div>`).join('');
-  paintKey(); renderSyncStatus();
+  paintKey(); renderSyncStatus(); renderGcalStatus();
   renderDash();renderMatters();renderDeadlines();renderDiscovery();renderRecords();
   renderLetters();renderTasks();renderDirectory();
 }
@@ -1810,6 +1938,26 @@ function renderSyncStatus(){
   if(btnResume) btnResume.hidden=s.state!=='needs-permission';
   if(btnNow) btnNow.hidden=s.state==='off';
   if(btnDisc) btnDisc.hidden=s.state==='off';
+}
+function renderGcalStatus(){
+  const el=$('#gcalStatus'); if(!el) return;
+  const btnConnect=$('#btnGcalConnect'), btnDisc=$('#btnGcalDisconnect'), btnPush=$('#btnGcalPushAll');
+  if(!GCal.supported){
+    el.innerHTML=`<p class="note">Not set up yet — an admin needs to complete the one-time Google Cloud setup in the README before this can be used.</p>`;
+    [btnConnect,btnDisc,btnPush].forEach(b=>{ if(b) b.hidden=true; });
+    return;
+  }
+  const s=GCal.status;
+  const views={
+    off:()=>`<p class="note">Not connected.</p>`,
+    connecting:()=>`<p class="note">Connecting…</p>`,
+    connected:()=>`<p class="note">Connected${GCal.email?` as <strong>${esc(GCal.email)}</strong>`:''}.</p>`,
+    error:()=>`<div class="alert">Google Calendar error: ${esc(s.error)}. Try Connect again.</div>`
+  };
+  el.innerHTML=(views[s.state]||views.off)();
+  if(btnConnect) btnConnect.hidden=s.state==='connected';
+  if(btnDisc) btnDisc.hidden=s.state!=='connected';
+  if(btnPush) btnPush.hidden=s.state!=='connected';
 }
 function paintKey(){
   const b=$('#keyBanner');
@@ -1912,6 +2060,9 @@ $('#btnSyncNow').onclick=()=>SyncFS.sync();
 $('#btnSyncDisconnect').onclick=()=>{
   if(confirm('Stop syncing this browser to "'+SyncFS.status.name+'"? The shared file itself is left exactly as it is — other people stay connected.')) SyncFS.disconnect();
 };
+$('#btnGcalConnect').onclick=()=>GCal.connect();
+$('#btnGcalDisconnect').onclick=()=>{ if(confirm('Disconnect this browser from Google Calendar? Events already on the calendar are left as they are.')) GCal.disconnect(); };
+$('#btnGcalPushAll').onclick=()=>GCal.syncAllMatters();
 $('#calcFrom').value=iso(TODAY);
 boot();
 

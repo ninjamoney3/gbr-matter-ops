@@ -131,6 +131,72 @@ sync folder is connected, your next sync brings it right back from the
 shared copy, which is the point — disconnect first if you actually want
 data gone from the shared folder too.
 
+## Google Calendar sync (optional — needs a one-time admin setup)
+
+**Settings → Google Calendar** pushes each matter's calendar-worthy dates —
+file-motion-by, discovery end date, arbitration, trial, statute of
+limitations — to a shared Google Calendar automatically, the moment a
+document read or a manual edit is saved. No exporting, no importing, no
+clicking through anything after the first connect.
+
+This ships **off by default** — the code has two blank constants
+(`GCAL_CLIENT_ID`, `GCAL_CALENDAR_ID`) near the top of the script, and
+until both are filled in, the feature stays completely hidden (Settings
+just says "not set up yet"). Someone with admin access to a Google account
+needs to do this once:
+
+1. **Create a Google Cloud project.** Go to
+   [console.cloud.google.com](https://console.cloud.google.com), create a
+   new project (e.g. "GBR Matter Ops") — free, no billing needed for this.
+2. **Enable the Calendar API.** APIs & Services → Library → search "Google
+   Calendar API" → Enable.
+3. **Configure the OAuth consent screen.** APIs & Services → OAuth consent
+   screen.
+   - If the firm's on **Google Workspace** (a `@gaul-law.com` Google
+     account, not personal Gmail), choose **Internal** — this keeps
+     everything private to the firm's domain with no Google review needed,
+     ever, and no "unverified app" warning for anyone signing in.
+   - Otherwise choose **External**, and keep the app in **Testing** mode
+     (add each attorney/staff email who'll use this as a test user, up to
+     100 — no review needed while in Testing). Testing-mode users will see
+     an "unverified app" warning on first sign-in; click "Advanced → Go to
+     GBR Matter Ops (unsafe)" to proceed — that's expected for an internal
+     tool that hasn't gone through Google's public-app review, not a sign
+     of anything actually wrong.
+   - Add the scope `https://www.googleapis.com/auth/calendar.events`
+     (create/edit/delete events — nothing broader).
+4. **Create the OAuth Client ID.** APIs & Services → Credentials → Create
+   Credentials → OAuth client ID → Application type **Web application**.
+   Under "Authorized JavaScript origins" add exactly:
+   `https://ninjamoney3.github.io` — no path, no trailing slash. Save, and
+   copy the Client ID (ends in `.apps.googleusercontent.com`).
+5. **Get the target calendar's ID.** In Google Calendar, create or open the
+   shared "GBR Discovery Calendar," then Settings and sharing for that
+   calendar → **Integrate calendar** → copy the **Calendar ID** (looks like
+   `abc123@group.calendar.google.com`, or an email address if it's someone's
+   own calendar). Under "Share with specific people," make sure everyone
+   who'll connect this app has **"Make changes to events"** access — the
+   app acts through each person's own Google sign-in, not a shared service
+   account, so each person needs real write access to see this work.
+6. **Paste both values in.** Open `index.html`, find `GCAL_CLIENT_ID=''`
+   and `GCAL_CALENDAR_ID=''` near the top of the `<script>` block, and fill
+   them in. These aren't secrets (a browser OAuth Client ID is meant to be
+   public — Google enforces the "authorized origins" restriction from step
+   4 server-side, not by keeping the ID hidden), so it's fine for them to
+   live in the committed source rather than a per-browser setting.
+
+Once that's live, each person clicks **Connect Google Calendar** in
+Settings once (per browser) and everything after that is automatic. A
+**Push all matters now** button in the same card does a one-time backfill
+of everything already in the system.
+
+**How it avoids duplicate events**: each matter remembers the Google event
+ID it was given per date, so a re-sync (from anyone, not just whoever
+created it originally) updates that same event instead of creating a new
+one — the id travels with the matter through the shared-folder sync above.
+Removing a date deletes its event; deleting a matter deletes all of its
+events.
+
 ## Rule citations — verification status
 
 The Deadlines tab's "Rule reference" table tags every citation with how it
