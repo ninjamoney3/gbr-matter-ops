@@ -3,11 +3,19 @@
    changes index.html/manifest/icons so clients pick up the new shell.
    Never intercepts cross-origin requests (in particular, calls to
    api.anthropic.com for document reading must always hit the network). */
-const CACHE_NAME = "gbr-matter-ops-shell-v9";
+const CACHE_NAME = "gbr-matter-ops-shell-v10";
 const SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
+  "./config.js",
+  "./dates.js",
+  "./util.js",
+  "./store.js",
+  "./gcal.js",
+  "./workflows.js",
+  "./intake.js",
+  "./app.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-512.png"
