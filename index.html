@@ -592,9 +592,17 @@ function returnDate(ded){if(!ded)return null;let x=add(ded,-1),g=0;while((x.getD
 const TRACK_DAYS={I:150,II:300,III:450,IV:450};
 
 /* ══════════ RULES ══════════
+   Scope: the Rules Governing the Courts of New Jersey only (R. 1:x, R. 2:x,
+   R. 4:x citations) — not N.J.S.A. statutes. Affidavit of merit, Tort
+   Claims Act notice/suit timing, and the PI/contract/minor limitations
+   periods were deliberately removed from this table on that basis; they
+   are still real deadlines a defense file needs tracked (a late AOM or
+   TCA notice is a dismissal ground worth moving on), just not ones that
+   belong in a table scoped to court rules. Track them elsewhere, or ask
+   for a separate statutes table, if that tracking is still needed.
    `v` marks verification state:
      'pub' — a person on the team checked this against the official Rules
-             Governing the Courts of New Jersey / N.J.S.A. text directly.
+             Governing the Courts of New Jersey text directly.
      'sec' — checked 9/1/2026 against secondary legal-research sources
              (search-engine snippets of aggregators, not the official PDF,
              and not a citator) — see note below the table. Treat as a
@@ -645,18 +653,6 @@ const RULES=[
  {k:'appeal',      t:'Notice of appeal as of right',       a:'R. 2:4-1(a)',            d:45,  from:'Entry of final judgment', v:'sec', filing:true},
  {k:'recon',       t:'Motion for reconsideration',         a:'R. 4:49-2',              d:20,  from:'Service of the order with notice of entry', v:'sec', filing:true,
    note:'Applies to final orders/judgments. An interlocutory order is reviewable "at any time" before final judgment under R. 4:42-2, not on this 20-day clock.'},
- {k:'aom',         t:'Affidavit of merit',                 a:'N.J.S.A. 2A:53A-27',     d:60,  from:'Answer to the complaint', v:'sec', filing:'confirm',
-   note:'Served on defense counsel; whether it must also be filed with the court (as opposed to just served) varies by practice — confirm. Extendable by one additional 60 days (120 total) for good cause.'},
- {k:'tcanotice',   t:'Tort Claims Act notice',             a:'N.J.S.A. 59:8-8',        d:90,  from:'Accrual of the claim', v:'sec', filing:false,
-   note:'Served on the public entity directly, not filed with any court.'},
- {k:'tcasuit',     t:'Earliest suit after TCA notice',     a:'N.J.S.A. 59:8-8',        from:'Service of the notice', v:'sec', special:'months', n:6, filing:false,
-   note:'Statute says "six months," not "180 days" — computed here by calendar month, not a fixed day count. This date itself is not a filing; the complaint that follows is.'},
- {k:'solpi',       t:'Personal injury limitations — complaint must be filed by',  a:'N.J.S.A. 2A:14-2',       from:'Accrual of the claim', v:'sec', special:'years', n:2, filing:true,
-   note:'Computed by calendar year, not a fixed 730-day count (a day-count approximation silently drifts across leap years). Subject to the discovery rule and other tolling doctrines this calculator does not apply.'},
- {k:'solcontract', t:'Contract limitations — complaint must be filed by',  a:'N.J.S.A. 2A:14-1',       from:'Accrual of the claim', v:'sec', special:'years', n:6, filing:true,
-   note:'Computed by calendar year, not a fixed 2190-day count, for the same leap-year reason as above.'},
- {k:'solminor',    t:'Minor — limitations begins',         a:'N.J.S.A. 2A:14-21',      d:null,from:'18th birthday', v:'sec', filing:false,
-   note:'Tolled during minority; two years from majority for an ordinary personal-injury claim. Does NOT govern child sexual abuse claims (N.J.S.A. 2A:14-2a/2A:14-2b — a much longer, separate track) or birth-injury medical malpractice (separate 13th-birthday rule) — route those to counsel, not this row.'},
  {k:'subpoena',    t:'Subpoena duces tecum — compliance',  a:'R. 1:9-2',               d:null,from:'Date stated on the subpoena', v:'sec', filing:false,
    note:'No NJ rule sets a fixed statewide response period; comply by whatever date the subpoena itself states. R. 4:14-7(c) is a related but different rule — it requires a deposition document subpoena to be served at least 10 days before the deposition, which is a service deadline, not a response deadline.'}
 ];
@@ -1263,7 +1259,7 @@ function renderDeadlines(){
     <td><span class="pill ${fb.c}">${fb.t}</span></td>
     <td><span class="vflag ${b.c}">${b.t}</span></td></tr>`;}).join('');
   const pub=RULES.filter(r=>r.v==='pub').length, sec=RULES.filter(r=>r.v==='sec').length, unv=RULES.filter(r=>r.v==='unv').length;
-  $('#ruleVerifyNote').textContent=`Every line carries a verification flag. As of ${RULES_LAST_REVIEWED}: ${pub} checked directly against the official Rules/Statutes text, `
+  $('#ruleVerifyNote').textContent=`Every line carries a verification flag. As of ${RULES_LAST_REVIEWED}: ${pub} checked directly against the official Rules text, `
     +`${sec} checked against secondary legal-research sources (not the official text, and not a citator), ${unv} not checked at all. `
     +`None of this has been run through Westlaw or Lexis. Confirm anything outcome-determinative before filing.`;
   $('#holidayList').innerHTML=Object.entries(HOLIDAYS).map(([d,n])=>
@@ -1306,7 +1302,7 @@ function runCalc(){
     if(r.d<0) h+=R('Direction','Backward-computed — the date moves earlier, never later');
   }
   const vb=vBadge(r.v);
-  h+=R('Verification',vb.t==='checked — official text'?'Checked directly against the official Rules/Statutes text — no citator run':
+  h+=R('Verification',vb.t==='checked — official text'?'Checked directly against the official Rules text — no citator run':
       vb.t==='checked — secondary source'?`Checked against secondary legal-research sources as of ${RULES_LAST_REVIEWED} — not the official text or a citator`:
       'Unverified — confirm on Westlaw or Lexis');
   if(r.note) h+=R('Note',esc(r.note));
