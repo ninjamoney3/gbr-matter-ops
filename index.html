@@ -232,6 +232,13 @@ tbody tr:hover td{background:#FCFCFA}
     <input type="file" id="picker" multiple accept="application/pdf,image/png,image/jpeg" hidden>
   </div>
   <div id="queue"></div>
+  <div class="row" style="margin:14px 0;justify-content:center">
+    <span class="note">or</span>
+  </div>
+  <div class="row" style="justify-content:center;margin-bottom:14px">
+    <button class="primary" id="btnWhatHappened" style="font-size:14px;padding:10px 20px">+ Tell GBR What Happened</button>
+  </div>
+  <p class="note" style="text-align:center;margin-bottom:14px">Pick what happened on a matter — the right NJ Court Rule runs underneath, you never have to pick it.</p>
   <div class="row" style="margin-top:14px">
     <button id="btnManual">Add matter by hand</button>
     <span class="sp"></span>
@@ -287,7 +294,7 @@ tbody tr:hover td{background:#FCFCFA}
       <button id="btnNewDeadline" class="primary">Log deadline</button>
     </div>
     <div class="tw"><table><thead><tr>
-      <th style="min-width:210px">Matter</th><th>Deadline</th><th>Due</th><th>Days</th><th>Filing</th><th>Status</th><th></th>
+      <th style="min-width:210px">Matter</th><th>Deadline</th><th>Owner</th><th>Due</th><th>Days</th><th>Filing</th><th>Status</th><th></th>
     </tr></thead><tbody id="dlRows"></tbody></table>
     <div class="empty" id="dlEmpty">Nothing logged yet.</div></div>
   </div>
@@ -487,59 +494,123 @@ let DB={matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[],log:
 let APIKEY='', WHO='CJG';
 const TODAY=sod(new Date());
 
-/* ══════════ FIRM ══════════ */
-const FIRM={
-  name:'GAUL, BARATTA & ROSELLO, LLC', short:'GBR',
-  tagline:'ATTORNEYS AT LAW',
-  street:'100 HANOVER AVENUE', city:'CEDAR KNOLLS, NJ  07927',
-  phone:'(973) 539-5900', fax:'FAX (973) 539-0059',
-  respond:'Please respond to Cedar Knolls',
-  otherOffices:[
-    {label:'JERSEY CITY OFFICE', l1:'239 Washington Street, Suite 303', l2:'Jersey City, NJ  07302'},
-    {label:'NEW YORK OFFICE',    l1:'280 Madison Avenue, Suite 810',    l2:'New York, NY  10016'}
-  ],
-  legend:[
-    {m:'*', t:'Certified by the Supreme Court of New Jersey as a Civil Trial Attorney'},
-    {m:'\u2020', t:'also admitted in Pennsylvania'},
-    {m:'^', t:'also admitted in New York'}
-  ]
-};
-/* Order and marks taken verbatim from LETTERHEAD - NEW 01/05/2026.
-   RPC 7.4: the Civil Trial Attorney certification belongs to Joseph M. Gaul, Jr.
-   alone and is never attributed to Corey or to the firm.                        */
-const PEOPLE=[
-  {i:'JMG',n:'Joseph M. Gaul, Jr.', lh:'JOSEPH M. GAUL, JR.', mark:'*',        r:'Partner',   o:'Certified by the Supreme Court of New Jersey as a Civil Trial Attorney', onLH:true},
-  {i:'JAB',n:'Jessica A. Baratta',  lh:'JESSICA A. BARATTA',  mark:'\u2020',   r:'Partner',   o:'Own caseload', onLH:true},
-  {i:'LFR',n:'Lawrence F. Rosello', lh:'LAWRENCE F. ROSELLO', mark:'',         r:'Partner',   o:'Own caseload', onLH:true},
-  {i:'CJG',n:'Corey J. Gaul',       lh:'COREY J. GAUL',       mark:'^',        r:'Managing partner', o:'Own caseload; trials, strategy, carrier relationships', email:'cgaul@gaul-law.com', onLH:true},
-  {i:'SMB',n:'Shannon Burke',       lh:'SHANNON BURKE',       mark:'',         r:'Attorney',  o:'Own caseload', onLH:true},
-  {i:'JEZ',n:'Joshua E. Zoeller',   lh:'JOSHUA E. ZOELLER',   mark:'^',        r:'Attorney',  o:'Own caseload', onLH:true},
-  {i:'JAD',n:'Jordan A. Davis',     lh:'JORDAN A. DAVIS',     mark:'',         r:'Associate', o:'Discovery and motion practice', onLH:true},
-  {i:'JSC',n:'Julie Scalley',       lh:'',                    mark:'',         r:'Legal secretary', o:'Calendaring, intake, correspondence', onLH:false}
-];
-/* Named claims contacts are relationship data, not firm letterhead — like
-   matter data, they don't belong hardcoded into the app everyone gets a
-   copy of. Add real contacts locally, or bring them in via a handoff file. */
-const CARRIERS=[
-  {n:'Travelers',      s:'Panel',    c:''},
-  {n:'Liberty Mutual', s:'Panel',    c:''},
-  {n:'Hanover',        s:'Pursuing', c:''},
-  {n:'AmTrust',        s:'Pursuing', c:''},
-  {n:'Hartford',       s:'Pursuing', c:''}
-];
-const VENUES={ESX:'Essex',BER:'Bergen',HUD:'Hudson',UNN:'Union',MRS:'Morris',PAS:'Passaic',MID:'Middlesex',
-  MON:'Monmouth',OCN:'Ocean',SOM:'Somerset',SSX:'Sussex',WRN:'Warren',HNT:'Hunterdon',CAM:'Camden',
-  BUR:'Burlington',MER:'Mercer',CPM:'Cape May',ATL:'Atlantic',GLO:'Gloucester',SAL:'Salem',CUM:'Cumberland',
-  NY:'New York (Supreme)',USDC:'U.S. District Court'};
+/* ══════════════════════════════════════════════════════════════════════
+   ══════════ CONFIGURATION — edit values in this block only ══════════
+   Everything a firm administrator would ever need to change lives here:
+   who's on the letterhead, carrier list, venue names, standing drafting
+   rules, court holidays (add next year's every December), the Google
+   Calendar identifiers, and the reminder/follow-up timing policy. Nothing
+   below this block should need to change to update any of these.
 
-const STANDING=[
-  'A time entry is drafted after every billable client-matter task. Timekeeper CJG unless stated otherwise, no UTBMS codes, hours as good-faith estimates. Nothing is drafted for internal firm operations.',
-  'Every case law and court rule citation carries a verification flag. No unverified cite is filing-ready without a Westlaw or Lexis check.',
-  'Always "IME" — Independent Medical Examination. Never the plaintiff-preferred "DME".',
-  'The Civil Trial Attorney certification belongs to Joe Gaul by name. It is never attributed to Corey or to the firm, per RPC 7.4.',
-  'Time is recorded in 0.1 increments with defensible, carrier-conscious narratives.',
-  'Defense files carry a JMG410 suffix. Plaintiff files end in CJG.'
-];
+   Google Calendar identifiers are NOT secrets — a browser OAuth Client ID
+   is meant to be public; Google enforces access by authorized origin, not
+   by hiding the ID. Real client/matter data, API keys, and OAuth tokens
+   still never belong here or anywhere in source — those stay per-browser
+   only (see Settings → Anthropic API key, and the Confidentiality section
+   of the README).
+
+   The rest of the file reads these through the plain constants declared
+   right after this block (FIRM, PEOPLE, VENUES, etc.) — those are thin
+   aliases into CONFIG, kept so the places that already reference them by
+   name don't all need to change for this reorganization. Edit the values
+   here; nothing else needs to move. ══════════════════════════════════ */
+const CONFIG={
+  firm:{
+    name:'GAUL, BARATTA & ROSELLO, LLC', short:'GBR',
+    tagline:'ATTORNEYS AT LAW',
+    street:'100 HANOVER AVENUE', city:'CEDAR KNOLLS, NJ  07927',
+    phone:'(973) 539-5900', fax:'FAX (973) 539-0059',
+    respond:'Please respond to Cedar Knolls',
+    otherOffices:[
+      {label:'JERSEY CITY OFFICE', l1:'239 Washington Street, Suite 303', l2:'Jersey City, NJ  07302'},
+      {label:'NEW YORK OFFICE',    l1:'280 Madison Avenue, Suite 810',    l2:'New York, NY  10016'}
+    ],
+    legend:[
+      {m:'*', t:'Certified by the Supreme Court of New Jersey as a Civil Trial Attorney'},
+      {m:'\u2020', t:'also admitted in Pennsylvania'},
+      {m:'^', t:'also admitted in New York'}
+    ]
+  },
+  /* Order and marks taken verbatim from LETTERHEAD - NEW 01/05/2026.
+     RPC 7.4: the Civil Trial Attorney certification belongs to Joseph M.
+     Gaul, Jr. alone and is never attributed to Corey or to the firm. */
+  people:[
+    {i:'JMG',n:'Joseph M. Gaul, Jr.', lh:'JOSEPH M. GAUL, JR.', mark:'*',        r:'Partner',   o:'Certified by the Supreme Court of New Jersey as a Civil Trial Attorney', onLH:true},
+    {i:'JAB',n:'Jessica A. Baratta',  lh:'JESSICA A. BARATTA',  mark:'\u2020',   r:'Partner',   o:'Own caseload', onLH:true},
+    {i:'LFR',n:'Lawrence F. Rosello', lh:'LAWRENCE F. ROSELLO', mark:'',         r:'Partner',   o:'Own caseload', onLH:true},
+    {i:'CJG',n:'Corey J. Gaul',       lh:'COREY J. GAUL',       mark:'^',        r:'Managing partner', o:'Own caseload; trials, strategy, carrier relationships', email:'cgaul@gaul-law.com', onLH:true},
+    {i:'SMB',n:'Shannon Burke',       lh:'SHANNON BURKE',       mark:'',         r:'Attorney',  o:'Own caseload', onLH:true},
+    {i:'JEZ',n:'Joshua E. Zoeller',   lh:'JOSHUA E. ZOELLER',   mark:'^',        r:'Attorney',  o:'Own caseload', onLH:true},
+    {i:'JAD',n:'Jordan A. Davis',     lh:'JORDAN A. DAVIS',     mark:'',         r:'Associate', o:'Discovery and motion practice', onLH:true},
+    {i:'JSC',n:'Julie Scalley',       lh:'',                    mark:'',         r:'Legal secretary', o:'Calendaring, intake, correspondence', onLH:false}
+  ],
+  /* Named claims contacts are relationship data, not firm letterhead — like
+     matter data, they don't belong hardcoded into the app everyone gets a
+     copy of. Add real contacts locally, or bring them in via a handoff file. */
+  carriers:[
+    {n:'Travelers',      s:'Panel',    c:''},
+    {n:'Liberty Mutual', s:'Panel',    c:''},
+    {n:'Hanover',        s:'Pursuing', c:''},
+    {n:'AmTrust',        s:'Pursuing', c:''},
+    {n:'Hartford',       s:'Pursuing', c:''}
+  ],
+  venues:{ESX:'Essex',BER:'Bergen',HUD:'Hudson',UNN:'Union',MRS:'Morris',PAS:'Passaic',MID:'Middlesex',
+    MON:'Monmouth',OCN:'Ocean',SOM:'Somerset',SSX:'Sussex',WRN:'Warren',HNT:'Hunterdon',CAM:'Camden',
+    BUR:'Burlington',MER:'Mercer',CPM:'Cape May',ATL:'Atlantic',GLO:'Gloucester',SAL:'Salem',CUM:'Cumberland',
+    NY:'New York (Supreme)',USDC:'U.S. District Court'},
+  standingRules:[
+    'A time entry is drafted after every billable client-matter task. Timekeeper CJG unless stated otherwise, no UTBMS codes, hours as good-faith estimates. Nothing is drafted for internal firm operations.',
+    'Every case law and court rule citation carries a verification flag. No unverified cite is filing-ready without a Westlaw or Lexis check.',
+    'Always "IME" — Independent Medical Examination. Never the plaintiff-preferred "DME".',
+    'The Civil Trial Attorney certification belongs to Joe Gaul by name. It is never attributed to Corey or to the firm, per RPC 7.4.',
+    'Time is recorded in 0.1 increments with defensible, carrier-conscious narratives.',
+    'Defense files carry a JMG410 suffix. Plaintiff files end in CJG.'
+  ],
+  /* 2026–2027 court year checked against the AOC Order, Schedule of 2026-2027
+     Legal Holidays and Court Recesses (njcourts.gov), 8/11/2026.
+     2027–2028 entries are marked ESTIMATED below. As of this build (9/1/2026)
+     it was not possible to confirm from this environment whether the AOC has
+     already published the 2027-2028 order — check njcourts.gov directly
+     (Attorneys → Calendars & Schedules) before relying on those dates.       */
+  courtHolidays:{
+   /* 2025–2026 court year, now past */
+   '2026-01-01':"New Year's Day",'2026-01-19':'Martin Luther King, Jr. Day','2026-02-16':"Presidents' Day",
+   '2026-04-03':'Good Friday','2026-05-25':'Memorial Day','2026-06-19':'Juneteenth',
+   /* 2026–2027 court year — verified */
+   '2026-07-03':'Independence Day (observed)','2026-09-07':'Labor Day','2026-10-12':'Columbus Day',
+   '2026-11-03':'Election Day','2026-11-11':'Veterans Day',
+   '2026-11-23':'Statewide Judicial College','2026-11-24':'Statewide Judicial College','2026-11-25':'Statewide Judicial College',
+   '2026-11-26':'Thanksgiving','2026-12-25':'Christmas Day',
+   '2026-12-28':'Court recess','2026-12-29':'Court recess','2026-12-30':'Court recess','2026-12-31':'Court recess',
+   '2027-01-01':"New Year's Day",'2027-01-18':'Martin Luther King, Jr. Day','2027-02-15':"Presidents' Day",
+   '2027-03-26':'Good Friday','2027-05-31':'Memorial Day','2027-06-18':'Juneteenth (observed)',
+   /* 2027–2028 court year — ESTIMATED, not yet verified */
+   '2027-07-05':'Independence Day (observed) — estimated','2027-09-06':'Labor Day — estimated',
+   '2027-10-11':'Columbus Day — estimated','2027-11-02':'Election Day — estimated',
+   '2027-11-11':'Veterans Day — estimated','2027-11-25':'Thanksgiving — estimated',
+   '2027-12-24':'Christmas Day (observed) — estimated'
+  },
+  googleCalendar:{
+    /* Optional and off by default — see the README for the one-time Google
+       Cloud setup. Until both are set, Calendar sync stays hidden. */
+    clientId:'100711203422-437nqc5rvpfdars7bpbee88ilsc10kss.apps.googleusercontent.com',
+    calendarId:'o6kpoj73a21f4bkmn6ocq5u3io@group.calendar.google.com' // GBR Discovery Calendar
+  },
+  /* How far ahead each kind of deadline starts nagging. 'filing' MUST stay
+     at or under 28 days — Google Calendar rejects any reminders.overrides
+     minutes value above 40320 (its documented 4-week cap); 30 days (43200)
+     silently fails the API call for every filing deadline, which is the
+     one category this app most needs to land on the Calendar. */
+  reminderProfiles:{filing:[28,14,7,3,1], confirm:[21,10,3], standard:[14,7]},
+  /* Records-chase follow-up escalation, in days from the original request. */
+  recordsChaseLadder:[21,30,45,60]
+};
+/* ─── Compatibility aliases — the rest of the file reads these, not CONFIG
+   directly. Pure plumbing: change values above, not these lines. ─── */
+const FIRM=CONFIG.firm, PEOPLE=CONFIG.people, CARRIERS=CONFIG.carriers, VENUES=CONFIG.venues,
+  STANDING=CONFIG.standingRules, HOLIDAYS=CONFIG.courtHolidays,
+  GCAL_CLIENT_ID=CONFIG.googleCalendar.clientId, GCAL_CALENDAR_ID=CONFIG.googleCalendar.calendarId,
+  CHASE=CONFIG.recordsChaseLadder;
 
 /* ══════════ DATES ══════════ */
 function sod(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
@@ -557,30 +628,6 @@ function addYears(d,n){const x=new Date(d);x.setFullYear(x.getFullYear()+n);retu
 function addMonths(d,n){const x=new Date(d);x.setMonth(x.getMonth()+n);return x;}
 function diff(a,b){return Math.round((sod(b)-sod(a))/864e5);}
 
-/* 2026–2027 court year checked against the AOC Order, Schedule of 2026-2027
-   Legal Holidays and Court Recesses (njcourts.gov), 8/11/2026.
-   2027–2028 entries are marked ESTIMATED below. As of this build (9/1/2026)
-   it was not possible to confirm from this environment whether the AOC has
-   already published the 2027-2028 order — check njcourts.gov directly
-   (Attorneys → Calendars & Schedules) before relying on those dates.       */
-const HOLIDAYS={
- /* 2025–2026 court year, now past */
- '2026-01-01':"New Year's Day",'2026-01-19':'Martin Luther King, Jr. Day','2026-02-16':"Presidents' Day",
- '2026-04-03':'Good Friday','2026-05-25':'Memorial Day','2026-06-19':'Juneteenth',
- /* 2026–2027 court year — verified */
- '2026-07-03':'Independence Day (observed)','2026-09-07':'Labor Day','2026-10-12':'Columbus Day',
- '2026-11-03':'Election Day','2026-11-11':'Veterans Day',
- '2026-11-23':'Statewide Judicial College','2026-11-24':'Statewide Judicial College','2026-11-25':'Statewide Judicial College',
- '2026-11-26':'Thanksgiving','2026-12-25':'Christmas Day',
- '2026-12-28':'Court recess','2026-12-29':'Court recess','2026-12-30':'Court recess','2026-12-31':'Court recess',
- '2027-01-01':"New Year's Day",'2027-01-18':'Martin Luther King, Jr. Day','2027-02-15':"Presidents' Day",
- '2027-03-26':'Good Friday','2027-05-31':'Memorial Day','2027-06-18':'Juneteenth (observed)',
- /* 2027–2028 court year — ESTIMATED, not yet verified */
- '2027-07-05':'Independence Day (observed) — estimated','2027-09-06':'Labor Day — estimated',
- '2027-10-11':'Columbus Day — estimated','2027-11-02':'Election Day — estimated',
- '2027-11-11':'Veterans Day — estimated','2027-11-25':'Thanksgiving — estimated',
- '2027-12-24':'Christmas Day (observed) — estimated'
-};
 function isClosed(d){return d.getDay()===0||d.getDay()===6||!!HOLIDAYS[iso(d)];}
 /* R. 1:3-1 — a period ending on a weekend or court holiday runs to the next business day */
 function roll(d){let x=new Date(d),g=0;while(isClosed(x)&&g++<40)x=add(x,1);return x;}
@@ -588,6 +635,12 @@ function roll(d){let x=new Date(d),g=0;while(isClosed(x)&&g++<40)x=add(x,1);retu
 function rollBack(d){let x=new Date(d),g=0;while(isClosed(x)&&g++<40)x=add(x,-1);return x;}
 /* Motions are returnable on Fridays; skip Fridays the courts are closed */
 function returnDate(ded){if(!ded)return null;let x=add(ded,-1),g=0;while((x.getDay()!==5||HOLIDAYS[iso(x)])&&g++<400)x=add(x,-1);return x;}
+/* N actual business days before a date — NOT the same as "subtract N
+   calendar days, then roll if it lands on a closed day" (rollBack only
+   nudges the landing spot; it doesn't count weekends/holidays inside the
+   span). Used for the GBR-internal nag buffer, which promises N real
+   working days of lead time. */
+function subtractBusinessDays(d,n){let x=new Date(d),count=0,g=0;while(count<n&&g++<400){x=add(x,-1);if(!isClosed(x))count++;}return x;}
 
 const TRACK_DAYS={I:150,II:300,III:450,IV:450};
 
@@ -837,8 +890,6 @@ const SyncFS={
    including when a different signed-in person triggers the next sync,
    since m.gcal travels with the matter through the shared-folder sync
    like any other field. */
-const GCAL_CLIENT_ID='100711203422-437nqc5rvpfdars7bpbee88ilsc10kss.apps.googleusercontent.com';
-const GCAL_CALENDAR_ID='o6kpoj73a21f4bkmn6ocq5u3io@group.calendar.google.com'; // GBR Discovery Calendar
 const GCal={
   supported: !!(GCAL_CLIENT_ID && GCAL_CALENDAR_ID),
   token:null, tokenClient:null, email:'',
@@ -942,7 +993,7 @@ const GCal={
   async syncDeadline(d){
     if(this.status.state!=='connected') return;
     try{
-      if(d.status!=='Open'){ await this.deleteEventOn(d); touch(d); await save(); SyncFS.scheduleSync(); return; }
+      if(isDeadlineDone(d)){ await this.deleteEventOn(d); touch(d); await save(); SyncFS.scheduleSync(); return; }
       const m=mById(d.matterId); const due=pd(d.due); if(!m||!due) return;
       const prefix=d.filing===true?'FILE WITH COURT':d.filing==='confirm'?'CONFIRM FILING REQ.':'DEADLINE';
       await this.upsertEventOn(d,{date:due,filing:d.filing,
@@ -979,7 +1030,7 @@ const GCal={
   async syncAllMatters(){
     if(this.status.state!=='connected') return toast('Connect Google Calendar first.');
     const live=DB.matters.filter(isLive);
-    const openDeadlines=DB.deadlines.filter(d=>d.status==='Open');
+    const openDeadlines=DB.deadlines.filter(d=>!isDeadlineDone(d));
     const openDisc=DB.discovery.filter(x=>x.status!=='Complete'&&x.dueDate);
     const openRec=DB.records.filter(r=>r.status!=='Received'&&r.nextFollowUp);
     const total=live.length+openDeadlines.length+openDisc.length+openRec.length;
@@ -1048,7 +1099,15 @@ function renderDash(){
     const n=pd(x.dueDate); const m=mById(x.matterId);
     if(n&&m) items.push({m,what:x.item+' due',date:n,days:diff(TODAY,n),owner:m.owner,kind:'disc'});
   });
-  DB.tasks.filter(t=>!t.done&&t.due).forEach(t=>{
+  DB.deadlines.filter(d=>!isDeadlineDone(d)).forEach(d=>{
+    const n=pd(d.due); const m=mById(d.matterId);
+    if(n&&m) items.push({m,what:(d.filing===true?'FILE WITH COURT: ':'')+d.title,date:n,days:diff(TODAY,n),owner:deadlineOwner(d),kind:'dl'});
+  });
+  /* Tasks auto-created for a filing deadline (see logDeadline) are skipped
+     here — the deadline entry just above already represents that same
+     obligation, with its filing status and owner; showing both would just
+     be the same thing twice on the one screen meant to say what's next. */
+  DB.tasks.filter(t=>!t.done&&t.due&&!t.linkedDeadlineId).forEach(t=>{
     const m=mById(t.matterId);
     items.push({m:m||{name:t.title,docket:'',file:''},what:'Task — '+t.title,date:pd(t.due),days:diff(TODAY,pd(t.due)),owner:t.owner,kind:'task'});
   });
@@ -1078,6 +1137,7 @@ function renderDash(){
   const gaps=[];
   DB.matters.filter(isLive).forEach(m=>{
     if(m.notes&&/CONFLICT/i.test(m.notes)) gaps.push([m.name,'Conflicting dates recorded','red']);
+    if(m.pendingDateChanges&&m.pendingDateChanges.length) gaps.push([m.name,`${m.pendingDateChanges.length} date change${m.pendingDateChanges.length>1?'s':''} proposed by intake — open the matter to resolve`,'red']);
     if(!m.docket&&m.status!=='Pre-suit') gaps.push([m.name,'No docket number','amber']);
     if(m.side==='defense'&&!m.originalDED&&!m.currentDED&&m.status==='Active') gaps.push([m.name,'No DED recorded','amber']);
     if(m.side==='plaintiff'&&!m.sol&&!m.docket) gaps.push([m.name,'No limitations date and no docket','amber']);
@@ -1129,7 +1189,7 @@ function renderMatters(){
     const d=derive(m);
     const sp={Active:'p-green','Trial listed':'p-amber','Pre-suit':'p-blue',Settled:'p-grey',Dismissed:'p-grey'}[m.status]||'p-grey';
     return `<tr>
-      <td><div class="cn">${esc(m.name)}</div>
+      <td><div class="cn">${esc(m.name)}${m.pendingDateChanges&&m.pendingDateChanges.length?` <span class="pill p-red">${m.pendingDateChanges.length} date change${m.pendingDateChanges.length>1?'s':''} pending</span>`:''}</div>
         <div class="meta mono">${esc(m.docket||'no docket')}${m.venue?' · '+esc(m.venue):''} · ${esc(m.file)}</div>
         ${ladder(d)}
         ${m.notes?`<div class="meta" style="max-width:330px;margin-top:4px">${esc(m.notes.slice(0,150))}${m.notes.length>150?'…':''}</div>`:''}</td>
@@ -1160,6 +1220,7 @@ function openMatter(m){
     <div class="mh"><h3>${isNew?'New matter':esc(m.name)}</h3>
       <div class="s">${isNew?'Defense files take a JMG410 suffix; plaintiff files end in CJG.':esc(m.file)+' · '+esc(m.docket||'no docket')}</div></div>
     <div class="mb">
+      ${!isNew&&m.pendingDateChanges&&m.pendingDateChanges.length?m.pendingDateChanges.map(pendingChangeCard).join(''):''}
       <div class="grid2">
         <div class="full"><label>Caption</label><input class="t" id="e_name" value="${esc(m.name)}"></div>
         <div><label>Docket</label><input id="e_docket" value="${esc(m.docket)}"></div>
@@ -1186,6 +1247,7 @@ function openMatter(m){
         <div class="full"><label>Notes</label><textarea class="t" id="e_notes" rows="3">${esc(m.notes)}</textarea></div>
       </div>
       <div class="derived"><h4>Computed</h4><div id="e_calc"></div></div>
+      ${!isNew?dateHistoryBlock(m):''}
     </div>
     <div class="mf">
       ${isNew?'':'<button class="danger" id="e_del">Delete</button>'}
@@ -1216,6 +1278,11 @@ function openMatter(m){
 
   $('#e_cancel').onclick=()=>$('#modalHost').innerHTML='';
   $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  if(!isNew){
+    $$('[data-pdc-keep]').forEach(b=>b.onclick=()=>keepCurrentDate(m,b.dataset.pdcKeep));
+    $$('[data-pdc-accept]').forEach(b=>b.onclick=()=>acceptDateChange(m,b.dataset.pdcAccept));
+    $$('[data-pdc-review]').forEach(b=>b.onclick=reviewPendingDate);
+  }
   if(!isNew) $('#e_del').onclick=async()=>{
     if(!confirm('Delete '+m.name+'? This cannot be undone.')) return;
     tomb('matters',m.id);
@@ -1224,6 +1291,19 @@ function openMatter(m){
   };
   $('#e_save').onclick=async()=>{
     const g=i=>$('#e_'+i).value;
+    /* Manual edits get the same change-history protection as an intake
+       accept — overwriting a date you'd already recorded, by hand or by
+       typo, shouldn't erase what it used to say. Only logs an actual
+       change to a previously-set value; filling a blank field for the
+       first time isn't a loss of information, so it's not logged. */
+    if(!isNew) DATE_PROPOSAL_FIELDS.forEach(c=>{
+      const from=m[c.field]||'', to=g(c.field==='currentDED'?'cded':c.field==='arbitration'?'arb':'trial');
+      if(from&&to&&from!==to){ m.dateHistory=m.dateHistory||[];
+        m.dateHistory.push({field:c.field,label:c.label,from,to,at:new Date().toISOString(),by:WHO,source:'Manual edit'}); }
+      // A manual edit to this field supersedes any pending proposal on it — drop it rather than leave a stale card.
+      if(to!==from&&m.pendingDateChanges&&m.pendingDateChanges.length)
+        m.pendingDateChanges=m.pendingDateChanges.filter(p=>p.field!==c.field);
+    });
     Object.assign(m,{name:g('name').trim()||'Untitled',docket:g('docket').trim(),venue:g('venue').trim().toUpperCase(),
       file:g('file').trim(),side:g('side'),status:g('status'),owner:g('owner'),track:g('track'),judge:g('judge').trim(),
       carrier:g('carrier').trim(),claim:g('claim').trim(),adjuster:g('adjuster').trim(),
@@ -1232,6 +1312,15 @@ function openMatter(m){
       notes:g('notes').trim(),lastActivity:iso(TODAY)});
     touch(m);
     if(isNew) DB.matters.push(m);
+    /* Typing a trial date straight into this editor and hitting Save is a
+       normal, common path — not just accepting an intake proposal — so it
+       needs the same Offer of Judgment bundling. maybeLogOJForTrial()'s
+       own guard (skip if this matter already has an open OJ deadline)
+       makes it safe to call on every save rather than trying to detect
+       whether this particular save is what changed the trial date. Runs
+       before renderAll() so a newly-logged OJ deadline isn't invisible
+       until some unrelated later action re-renders the Deadlines tab. */
+    if(m.trial) await maybeLogOJForTrial(m.id,m.trial);
     await save(); SyncFS.scheduleSync(); renderAll(); $('#modalHost').innerHTML=''; toast(isNew?'Matter added':'Saved');
     if(GCal.status.state==='connected') GCal.syncMatter(m);
   };
@@ -1337,27 +1426,76 @@ function filingBadge(f){
    fail the API call for every single filing deadline, the one category
    this feature most needs to land on the Calendar. */
 function reminderLadder(filing){
-  const days = filing===true ? [28,14,7,3,1] : filing==='confirm' ? [21,10,3] : [14,7];
+  const p=CONFIG.reminderProfiles;
+  const days = filing===true ? p.filing : filing==='confirm' ? p.confirm : p.standard;
   return days.map(n=>({method:'popup',minutes:n*24*60}));
 }
+/* ══════════ OBLIGATION LIFECYCLE ══════════
+   A filing-required deadline is an obligation, not just a date: it moves
+   Open → Drafting → Ready to File → Filed → Confirmed, and — this is the
+   actual docket-control mechanism, not decoration — it CANNOT reach
+   Confirmed without either a real filing confirmation (eCourts, a stamped
+   copy, a docket entry) or an explicit partner override with a reason on
+   the record. A non-filing deadline (tracking only, or still unconfirmed
+   whether it's a filing) keeps the simple Open → Done lifecycle; forcing
+   the full filing workflow onto a date nobody files anything for would
+   just be more clicking for no safety gained. */
+const FILING_STAGES=['Open','Drafting','Ready to File','Filed','Confirmed'];
+function nextFilingStage(status){
+  const i=FILING_STAGES.indexOf(status);
+  return FILING_STAGES[i<0?0:Math.min(i+1,FILING_STAGES.length-1)];
+}
+function isDeadlineDone(d){ return d.status==='Done'||d.status==='Confirmed'||d.status==='Moot'; }
+function deadlineStatusPill(status){
+  return {Open:'p-grey',Drafting:'p-blue','Ready to File':'p-amber',Filed:'p-amber',Confirmed:'p-green',Done:'p-green',Moot:'p-grey'}[status]||'p-grey';
+}
+/* Fallback accessors so a deadline logged before this release (missing
+   action/workProduct/owner/gbrInternalDate) still renders sensibly instead
+   of showing blanks — no migration pass needed, old records just compute
+   the same defaults a new one would get. */
+function deadlineAction(d){ return d.action || (d.filing===true?'FILE + SERVE':d.filing==='confirm'?'CONFIRM REQUIRED':'TRACK'); }
+function deadlineOwner(d){ return d.owner || (mById(d.matterId)||{}).owner || '—'; }
+function deadlineInternalDate(d){ return d.gbrInternalDate || d.due; }
 function renderDeadlineLedger(){
   fillMatterSelect('#dlMatter',true);
   const rows=DB.deadlines.slice().sort((a,b)=>{
-    if((a.status==='Done')!==(b.status==='Done')) return a.status==='Done'?1:-1;
+    if(isDeadlineDone(a)!==isDeadlineDone(b)) return isDeadlineDone(a)?1:-1;
     return (pd(a.due)||9e15)-(pd(b.due)||9e15);
   });
   $('#dlEmpty').style.display=rows.length?'none':'block';
   $('#dlRows').innerHTML=rows.map(d=>{
     const m=mById(d.matterId)||{name:'(matter removed)'};
-    const due=pd(d.due), dd=due?diff(TODAY,due):null, fb=filingBadge(d.filing), done=d.status==='Done';
+    const due=pd(d.due), dd=due?diff(TODAY,due):null, fb=filingBadge(d.filing), done=isDeadlineDone(d);
+    const internal=pd(deadlineInternalDate(d));
+    const internalLine = (d.filing===true && internal && deadlineInternalDate(d)!==d.due)
+      ? `<div class="meta">internal target ${fmt(internal)}</div>` : '';
+    let actionBtn='', mootBtn='';
+    if(!done){
+      if(d.filing===true){
+        actionBtn = d.status==='Filed'
+          ? `<button class="sm primary" data-dconfirm="${d.id}">Confirm filing</button>`
+          : `<button class="sm" data-dadvance="${d.id}">→ ${esc(nextFilingStage(d.status))}</button>`;
+        mootBtn = `<button class="sm" data-dmoot="${d.id}" title="Use this when the filing is no longer needed — withdrawn, mooted, settled — not for an actual filing. That goes through Confirm filing.">Close — not filed</button> `;
+      } else {
+        actionBtn = `<button class="sm" data-ddone="${d.id}">Done</button>`;
+      }
+    }
     return `<tr${done?' style="opacity:.55"':''}><td><strong>${esc(m.name)}</strong><div class="meta mono">${esc(m.docket||'')}</div></td>
-      <td>${esc(d.title)}<div class="meta mono">${esc(d.authority)}</div>${d.notes?`<div class="meta">${esc(d.notes)}</div>`:''}</td>
-      <td class="mono">${fmt(due)}</td>
+      <td>${esc(d.title)}<div class="meta mono">${esc(d.authority)} · ${esc(deadlineAction(d))}</div>${d.notes?`<div class="meta">${esc(d.notes)}</div>`:''}${d.status==='Moot'&&d.mootReason?`<div class="meta">Closed without filing: ${esc(d.mootReason.reason)}</div>`:''}</td>
+      <td><span class="pill p-grey">${esc(deadlineOwner(d))}</span></td>
+      <td class="mono">${fmt(due)}${internalLine}</td>
       <td><span class="num c-${done?'grey':tone(dd)}">${dd===null?'—':dd}</span></td>
       <td><span class="pill ${fb.c}">${fb.t}</span></td>
-      <td><span class="pill ${done?'p-green':'p-amber'}">${esc(d.status)}</span></td>
-      <td>${done?'':`<button class="sm" data-ddone="${d.id}">Done</button> `}<button class="sm" data-dnotice="${d.id}">Draft notice</button> <button class="sm" data-dlx="${d.id}">×</button></td></tr>`;
+      <td><span class="pill ${deadlineStatusPill(d.status)}">${esc(d.status)}</span></td>
+      <td>${actionBtn} ${mootBtn}${d.ruleKey?`<button class="sm" data-dnotice="${d.id}">Draft notice</button> `:''}<button class="sm" data-dlx="${d.id}">×</button></td></tr>`;
   }).join('');
+  $$('[data-dadvance]').forEach(b=>b.onclick=async()=>{
+    const d=DB.deadlines.find(i=>i.id===b.dataset.dadvance); if(!d) return;
+    d.status=nextFilingStage(d.status); touch(d);
+    await save();SyncFS.scheduleSync();renderAll();toast(`Moved to ${d.status}`);
+  });
+  $$('[data-dconfirm]').forEach(b=>b.onclick=()=>confirmFilingModal(b.dataset.dconfirm));
+  $$('[data-dmoot]').forEach(b=>b.onclick=()=>closeMootModal(b.dataset.dmoot));
   $$('[data-ddone]').forEach(b=>b.onclick=async()=>{
     const d=DB.deadlines.find(i=>i.id===b.dataset.ddone); d.status='Done'; touch(d);
     if(GCal.status.state==='connected') await GCal.deleteEventOn(d);
@@ -1371,6 +1509,79 @@ function renderDeadlineLedger(){
     tomb('deadlines',b.dataset.dlx);DB.deadlines=DB.deadlines.filter(i=>i.id!==b.dataset.dlx);
     await save();SyncFS.scheduleSync();renderAll();});
 }
+/* The actual gate: a filing deadline reaches Confirmed only through here.
+   Real confirmation (a method + evidence of when/how) or a reasoned
+   override by the managing partner — never a bare status flip. */
+function confirmFilingModal(deadlineId){
+  const d=DB.deadlines.find(x=>x.id===deadlineId); if(!d) return;
+  const m=mById(d.matterId);
+  $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:520px">
+    <div class="mh"><h3>Confirm filing</h3><div class="s">${esc(m?m.name:'')} — ${esc(d.title)}</div></div>
+    <div class="mb">
+      <p class="note">This can't reach Confirmed without proof it was filed, or a partner override with a reason on the record.</p>
+      <div class="full"><label>Confirmation method</label><select class="t" id="cf_method">
+        <option value="">— pick one —</option>
+        <option value="eCourts">NJ eCourts filing confirmation</option>
+        <option value="stamped">Stamped / returned copy</option>
+        <option value="docket">Docket entry confirmed</option>
+        <option value="override">Partner override — no filing confirmation yet</option>
+      </select></div>
+      <div class="full" id="cf_dateWrap"><label>Filed date</label><input type="date" id="cf_date" value="${iso(TODAY)}"></div>
+      <div class="full" id="cf_reasonWrap" style="display:none"><label>Override reason (required)</label><textarea class="t" id="cf_reason" rows="2" placeholder="Why this is being marked Confirmed without a filing confirmation"></textarea></div>
+    </div>
+    <div class="mf"><button id="cf_cancel">Cancel</button><button class="primary" id="cf_save">Confirm</button></div>
+  </div></div>`;
+  const toggle=()=>{ const v=$('#cf_method').value;
+    $('#cf_reasonWrap').style.display=v==='override'?'':'none';
+    $('#cf_dateWrap').style.display=v==='override'?'none':''; };
+  $('#cf_method').addEventListener('input',toggle); toggle();
+  $('#cf_cancel').onclick=()=>$('#modalHost').innerHTML='';
+  $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  $('#cf_save').onclick=async()=>{
+    const method=$('#cf_method').value; if(!method) return toast('Pick a confirmation method');
+    if(method==='override'){
+      if(WHO!=='CJG') return toast('Only CJG can override a filing confirmation');
+      const reason=$('#cf_reason').value.trim(); if(!reason) return toast('Override reason is required');
+      d.filingConfirmation={method:'override',by:WHO,reason,at:new Date().toISOString()};
+    } else {
+      const fd=$('#cf_date').value; if(!fd) return toast('Pick the filed date');
+      d.filingConfirmation={method,by:WHO,filedDate:fd,at:new Date().toISOString()};
+    }
+    d.status='Confirmed'; touch(d);
+    if(GCal.status.state==='connected') await GCal.deleteEventOn(d);
+    closeLinkedTask(d.id);
+    await save(); SyncFS.scheduleSync(); renderAll();
+    $('#modalHost').innerHTML=''; toast('Filing confirmed');
+  };
+}
+/* The other legitimate way a filing obligation closes: it turned out not
+   to be needed (withdrawn, mooted, the matter settled). Distinct from
+   Confirmed (which asserts a filing happened) and from deleting the row
+   (which would erase why it was closed) — this keeps the audit trail
+   honest about what actually happened. */
+function closeMootModal(deadlineId){
+  const d=DB.deadlines.find(x=>x.id===deadlineId); if(!d) return;
+  const m=mById(d.matterId);
+  $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:520px">
+    <div class="mh"><h3>Close without filing</h3><div class="s">${esc(m?m.name:'')} — ${esc(d.title)}</div></div>
+    <div class="mb">
+      <p class="note">Use this when the filing is genuinely no longer needed — not as a way around Confirm filing.</p>
+      <div class="full"><label>Reason (required)</label><textarea class="t" id="mt_reason" rows="2" placeholder="e.g. motion withdrawn, matter settled before the return date"></textarea></div>
+    </div>
+    <div class="mf"><button id="mt_cancel">Cancel</button><button class="primary" id="mt_save">Close it</button></div>
+  </div></div>`;
+  $('#mt_cancel').onclick=()=>$('#modalHost').innerHTML='';
+  $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  $('#mt_save').onclick=async()=>{
+    const reason=$('#mt_reason').value.trim(); if(!reason) return toast('A reason is required');
+    d.mootReason={by:WHO,reason,at:new Date().toISOString()};
+    d.status='Moot'; touch(d);
+    if(GCal.status.state==='connected') await GCal.deleteEventOn(d);
+    closeLinkedTask(d.id);
+    await save(); SyncFS.scheduleSync(); renderAll();
+    $('#modalHost').innerHTML=''; toast('Closed — no filing was made');
+  };
+}
 /* A filing deadline auto-creates a linked task (see newDeadline); once the
    deadline itself is done or removed, that task should never keep showing
    as open work — nobody should be re-filing something already handled, or
@@ -1379,8 +1590,8 @@ function closeLinkedTask(deadlineId){
   const t=DB.tasks.find(x=>x.linkedDeadlineId===deadlineId&&!x.done);
   if(t){ t.done=true; touch(t); }
 }
-function newDeadline(){
-  const mid=$('#dlMatter').value; if(!mid) return toast('Pick a matter first');
+function newDeadline(presetMid){
+  const mid=presetMid||$('#dlMatter').value; if(!mid) return toast('Pick a matter first');
   $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:580px">
     <div class="mh"><h3>Log a deadline</h3><div class="s">${esc((mById(mid)||{}).name||'')}</div></div>
     <div class="mb"><div class="grid2">
@@ -1423,18 +1634,84 @@ function newDeadline(){
     if(!from) return toast('Pick a trigger date');
     const due=computeRuleDue(r,from,track);
     if(!due) return toast(r.track?'Choose a track':'This rule has no fixed date to compute — log it once the date is known');
-    const filing=$('#dl_filing').value;
-    const d=touch({id:uid(),matterId:mid,ruleKey:r.k,title:r.t,authority:r.a,
-      trigger:iso(from),due:iso(due),filing:filing==='true'?true:filing==='false'?false:'confirm',
-      notes:$('#dl_notes').value.trim(),status:'Open'});
-    DB.deadlines.push(d);
-    if(d.filing===true){
-      DB.tasks.push(touch({id:uid(),title:`File: ${r.t} — ${(mById(mid)||{}).name||''}`,
-        owner:(mById(mid)||{}).owner||WHO,due:iso(due),matterId:mid,done:false,linkedDeadlineId:d.id}));
-    }
-    await save();SyncFS.scheduleSync();renderAll();$('#modalHost').innerHTML='';toast('Deadline logged');
-    if(GCal.status.state==='connected') GCal.syncDeadline(d);
+    const filingVal=$('#dl_filing').value;
+    await logDeadline(mid,r.k,from,filingVal==='true'?true:filingVal==='false'?false:'confirm',$('#dl_notes').value.trim(),track);
+    renderAll();$('#modalHost').innerHTML='';toast('Deadline logged');
   };
+}
+/* The one path that creates a RULE-based tracked deadline — used by the
+   manual Log Deadline form above and by the event-driven "What happened?"
+   flow below, so a rule's due date, linked filing task, and Calendar push
+   are never computed two different ways. (logInternalObligation() below
+   is the other, narrower path into DB.deadlines — for a workflow's own
+   drafting-stage obligations, which have no NJ rule to cite at all.)
+   Caller must already know `due` is computable (the UI forms check first
+   so they can show a useful message instead of a silent failure). */
+async function logDeadline(matterId,ruleKey,triggerDate,filing,notes,track){
+  const r=RULES.find(x=>x.k===ruleKey); if(!r) return null;
+  const due=computeRuleDue(r,triggerDate,track||''); if(!due) return null;
+  const mtr=mById(matterId);
+  /* GBR internal target: an earlier, non-legal buffer date for a filing
+     obligation so staff get nagged before the real deadline, not on it.
+     Purely additive — `due` stays the authoritative legal date everywhere
+     (Calendar, conflict detection, the Rule reference table); this is
+     only ever a second, softer reminder next to it. */
+  const internal = filing===true ? iso(subtractBusinessDays(due,3)) : iso(due);
+  const d=touch({id:uid(),matterId,ruleKey:r.k,title:r.t,authority:r.a,
+    trigger:iso(triggerDate),due:iso(due),filing,notes:notes||'',status:'Open',
+    action: filing===true?'FILE + SERVE':filing==='confirm'?'CONFIRM REQUIRED':'TRACK',
+    workProduct:r.t, owner:(mtr&&mtr.owner)||WHO, supervisor:filing===true?'CJG':'',
+    gbrInternalDate:internal});
+  DB.deadlines.push(d);
+  if(d.filing===true){
+    DB.tasks.push(touch({id:uid(),title:`File: ${r.t} — ${(mById(matterId)||{}).name||''}`,
+      owner:(mById(matterId)||{}).owner||WHO,due:iso(due),matterId,done:false,linkedDeadlineId:d.id}));
+  }
+  await save();SyncFS.scheduleSync();
+  if(GCal.status.state==='connected') GCal.syncDeadline(d);
+  return d;
+}
+/* ══════════ WORKFLOW TEMPLATES ══════════
+   A workflow is a bundle of obligations generated from one event, not a
+   second rules engine: "Motion practice" below still computes every date
+   through the exact same RULES/computeRuleDue/logDeadline path as a
+   single manually-logged deadline. The only new thing a workflow adds is
+   a drafting-stage obligation ahead of the real filing deadline, logged
+   via this helper rather than logDeadline() because drafting isn't
+   itself an NJ rule — it has no authority to cite, so it's tracked as an
+   internal-only obligation (filing:false, no linked Calendar prefix
+   implying a court filing) sitting in the same ledger as everything else. */
+async function logInternalObligation(matterId,title,dueDate,notes){
+  const mtr=mById(matterId);
+  const d=touch({id:uid(),matterId,ruleKey:null,title,authority:'Internal — GBR workflow step',
+    trigger:'',due:iso(dueDate),filing:false,notes:notes||'',status:'Open',
+    action:'DRAFT',workProduct:title,owner:(mtr&&mtr.owner)||WHO,supervisor:'',
+    gbrInternalDate:iso(dueDate)});
+  DB.deadlines.push(d);
+  await save();SyncFS.scheduleSync();
+  if(GCal.status.state==='connected') GCal.syncDeadline(d);
+  return d;
+}
+/* Trial workflow: call this wherever a matter's trial date just became
+   real (not merely proposed) — the Phase-1 accept flow AND a direct
+   manual edit in the matter editor both count, since both are legitimate,
+   normal ways a trial date gets set in this app. R. 4:58-1's Offer of
+   Judgment deadline counts backward from that date, so it only ever
+   bundles off a date someone actually confirmed, not a pending proposal.
+   Only creates one if the matter doesn't already have an open OJ deadline
+   — a later trial-date correction does not auto-update an existing one,
+   since silently rewriting an obligation someone may already be acting
+   on is exactly the risk this whole project exists to avoid. Surfaces a
+   toast on failure instead of silently doing nothing, same as every
+   sibling workflow bundle. */
+async function maybeLogOJForTrial(matterId,trialDateIso){
+  if(!trialDateIso) return;
+  if(DB.deadlines.some(x=>x.matterId===matterId&&x.ruleKey==='oj'&&!isDeadlineDone(x))) return;
+  const td=pd(trialDateIso);
+  if(!td) return toast('Trial date saved, but it could not be parsed to log the Offer of Judgment deadline — log it manually from Deadlines');
+  const ojRule=RULES.find(x=>x.k==='oj');
+  const dl=await logDeadline(matterId,'oj',td,ojRule.filing,`Auto-logged when trial date was set to ${fmt(td)}`);
+  if(!dl) toast('Trial date saved, but the Offer of Judgment deadline could not be computed — log it manually from Deadlines');
 }
 /* Jumps to Letters with the matter and the new notice type pre-selected,
    drafts it against this one deadline, and drops it in the approval queue
@@ -1514,19 +1791,29 @@ function newDiscovery(){
   $('#d_cancel').onclick=()=>$('#modalHost').innerHTML='';
   $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
   $('#d_save').onclick=async()=>{
-    const t=DISC_TYPES.find(x=>x.t===$('#d_item').value), s=pd($('#d_served').value);
-    const due = t.manual ? ($('#d_manual')?$('#d_manual').value:'') : iso(roll(add(s,t.d)));
-    if(t.manual && !due) return toast('Enter the due date shown on the document');
-    const x=touch({id:uid(),matterId:mid,item:t.t,authority:t.a,direction:$('#d_dir').value,
-      served:$('#d_served').value,dueDate:due,status:'Outstanding'});
-    DB.discovery.push(x);
-    await save();SyncFS.scheduleSync();renderAll();$('#modalHost').innerHTML='';toast('Logged');
-    if(GCal.status.state==='connected') GCal.syncDiscoveryItem(x);
+    const t=DISC_TYPES.find(x=>x.t===$('#d_item').value);
+    const manualDue=t.manual?($('#d_manual')?$('#d_manual').value:''):'';
+    if(t.manual && !manualDue) return toast('Enter the due date shown on the document');
+    const x=await logDiscoveryItem(mid,t,$('#d_served').value,$('#d_dir').value,manualDue);
+    if(!x) return toast('Could not log that item');
+    renderAll();$('#modalHost').innerHTML='';toast('Logged');
   };
+}
+/* Single place that actually creates a discovery-ledger entry — used by
+   the manual Log Discovery form above and by the event-driven "What
+   happened?" flow below. */
+async function logDiscoveryItem(matterId,discType,servedIso,direction,manualDueIso){
+  const due = discType.manual ? manualDueIso : iso(roll(add(pd(servedIso),discType.d)));
+  if(discType.manual && !due) return null;
+  const x=touch({id:uid(),matterId,item:discType.t,authority:discType.a,direction,
+    served:servedIso,dueDate:due,status:'Outstanding'});
+  DB.discovery.push(x);
+  await save();SyncFS.scheduleSync();
+  if(GCal.status.state==='connected') GCal.syncDiscoveryItem(x);
+  return x;
 }
 
 /* ══════════ RECORDS CHASE ══════════ */
-const CHASE=[21,30,45,60];
 function renderRecords(){
   fillMatterSelect('#recMatter',true);
   const rows=DB.records.slice().sort((a,b)=>(pd(a.nextFollowUp)||9e15)-(pd(b.nextFollowUp)||9e15));
@@ -1587,6 +1874,246 @@ function fillMatterSelect(sel,live){
   const list=DB.matters.filter(m=>!live||isLive(m)).sort((a,b)=>a.name.localeCompare(b.name));
   el.innerHTML='<option value="">Select a matter…</option>'+list.map(m=>`<option value="${m.id}">${esc(m.name)} · ${esc(m.file)}</option>`).join('');
   if(cur) el.value=cur;
+}
+
+/* ══════════ EVENT-DRIVEN INTAKE — "What happened?" ══════════
+   The whole point: an employee picks what happened in plain language and
+   answers only the facts that event actually needs. The NJ Court Rule,
+   the day-count, the rolling, the filing flag — all of it runs underneath
+   via the exact same RULES/computeRuleDue/logDeadline/logDiscoveryItem/
+   proposeDateChanges functions the rule-driven forms already use and this
+   app has already tested. This is a second front door onto that same
+   machinery, not a second set of rules to maintain. The Calculator and
+   the rule dropdown in Deadlines stay exactly as they are for anyone who
+   already knows which rule they want ("Other" below opens that directly). */
+const WHAT_HAPPENED_EVENTS=[
+  {k:'complaint_served',  t:'Complaint served',        h:'Starts the clock on our Answer'},
+  {k:'discovery_received',t:'Discovery received',      h:"A demand came in that we must respond to"},
+  {k:'motion_received',   t:'Motion received',         h:'Logs our opposition deadline'},
+  {k:'motion_filed',      t:'Motion filed',            h:'Logs our reply deadline'},
+  {k:'order_entered',     t:'Order entered',           h:'A court order changed something'},
+  {k:'discovery_extended',t:'Discovery extended',      h:'New discovery end date'},
+  {k:'arbitration_scheduled',t:'Arbitration scheduled',h:'Sets the arbitration date'},
+  {k:'arbitration_award',t:'Arbitration award entered',h:'Logs the trial de novo deadline'},
+  {k:'trial_scheduled',   t:'Trial scheduled',         h:'Sets the trial date'},
+  {k:'ime_scheduled',     t:'IME scheduled',           h:'Independent Medical Examination'},
+  {k:'other',             t:'Other',                   h:'Pick the NJ Court Rule yourself'}
+];
+function openWhatHappened(presetMid){
+  $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:640px">
+    <div class="mh"><h3>What happened?</h3><div class="s">Pick a matter, then what happened on it. The right rule runs underneath — you never have to pick it.</div></div>
+    <div class="mb">
+      <div class="full" style="margin-bottom:14px"><label>Matter</label><select class="t" id="wh_matter"></select></div>
+      <div class="grid2" id="wh_tiles">${WHAT_HAPPENED_EVENTS.map(e=>
+        `<button class="sm" data-wh="${e.k}" style="text-align:left;padding:10px 12px;height:auto">
+          <strong style="display:block">${esc(e.t)}</strong><span class="meta">${esc(e.h)}</span></button>`).join('')}</div>
+    </div>
+    <div class="mf"><button id="wh_cancel">Cancel</button></div>
+  </div></div>`;
+  fillMatterSelect('#wh_matter',true);
+  if(presetMid) $('#wh_matter').value=presetMid; // Back, from an event sub-form — don't make them re-find the matter
+  $('#wh_cancel').onclick=()=>$('#modalHost').innerHTML='';
+  $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  $$('[data-wh]').forEach(b=>b.onclick=()=>{
+    const mid=$('#wh_matter').value; if(!mid) return toast('Pick a matter first');
+    openWhatHappenedEvent(b.dataset.wh,mid);
+  });
+}
+/* One sub-form per event, each asking only what that event needs, each
+   ending by calling the same logging functions the rule-driven forms use. */
+function openWhatHappenedEvent(key,mid){
+  const m=mById(mid); if(!m) return toast('Matter not found');
+  const back=()=>openWhatHappened(mid);
+  const shell=(title,body,onSave)=>{
+    $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:560px">
+      <div class="mh"><h3>${esc(title)}</h3><div class="s">${esc(m.name)}</div></div>
+      <div class="mb">${body}</div>
+      <div class="mf"><button id="wh_back">Back</button><span class="sp"></span><button class="primary" id="wh_save">Log it</button></div>
+    </div></div>`;
+    $('#wh_back').onclick=back;
+    $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+    $('#wh_save').onclick=onSave;
+  };
+  const dateFieldPlain=(id,label)=>`<div class="full"><label>${esc(label)}</label><input type="date" id="${id}" value="${iso(TODAY)}"></div>`;
+  const dateField=(id,label)=>dateFieldPlain(id,label)+`<div class="full"><div class="derived" id="${id}_calc"></div></div>`;
+  const closeDone=(msg)=>{ renderAll(); $('#modalHost').innerHTML=''; toast(msg); };
+
+  if(key==='complaint_served'){
+    /* Complaint/Answer workflow: the service date generates both the real
+       Answer deadline and an internal drafting target ahead of it, same
+       bundling pattern as Motion Practice. */
+    shell('Complaint served',dateField('wh_d','Date of service'),async()=>{
+      const d=pd($('#wh_d').value); if(!d) return toast('Pick the service date');
+      const r=RULES.find(x=>x.k==='answer');
+      const dl=await logDeadline(mid,'answer',d,r.filing,`Reported via What Happened — complaint served ${fmt(d)}`);
+      if(!dl) return toast('Could not compute a due date — use the Deadlines calculator directly');
+      const draftBy=subtractBusinessDays(pd(dl.due),3);
+      await logInternalObligation(mid,'Draft answer',draftBy,`Ahead of ${r.t} (${r.a}), due ${fmt(pd(dl.due))}`);
+      closeDone(`Answer deadline logged (due ${fmt(pd(dl.due))}) with a drafting target (${fmt(draftBy)})`);
+    });
+    const rc=()=>{ const d=pd($('#wh_d').value); const r=RULES.find(x=>x.k==='answer'); const due=d&&computeRuleDue(r,d,'');
+      $('#wh_d_calc').innerHTML=due?`<div class="r"><span>Answer due (${esc(r.a)})</span><span class="mono"><strong>${fmt(due)}</strong></span></div>`
+        +`<div class="r"><span>Drafting target (internal, 3 business days ahead)</span><span class="mono">${fmt(subtractBusinessDays(due,3))}</span></div>`:''; };
+    $('#wh_d').addEventListener('input',rc); rc();
+    return;
+  }
+  if(key==='motion_received'||key==='motion_filed'){
+    /* Ordinary-motion and summary-judgment timing are NOT the same rule
+       (sjopp is -10 days, motopp is -8) — this app's one rule table has no
+       separate SJ reply row, so "filed" uses motreply either way, same as
+       picking the rule by hand would; "received" must still ask, since
+       sjopp vs motopp is a real two-day difference a rule-free shortcut
+       cannot silently guess. Cross-motions stay on "Other" (the manual
+       rule picker) — which side owes what, and by when, is genuinely
+       ambiguous here and not worth guessing at. */
+    const ruleKey=key==='motion_received'?{ordinary:'motopp',sj:'sjopp'}:{ordinary:'motreply',sj:'motreply'};
+    const label=key==='motion_received'?'our opposition':'our reply';
+    const draftLabel=key==='motion_received'?'Draft opposition to motion':'Draft motion papers';
+    /* Motion practice workflow: one input (return date) generates the
+       drafting obligation AND the real filing deadline, instead of
+       someone having to separately remember to also give themselves lead
+       time to draft. The filing deadline is computed exactly as it was
+       before this release — the workflow only adds the drafting step
+       ahead of it. */
+    shell(key==='motion_received'?'Motion received':'Motion filed',
+      `<div class="full"><label>What kind of motion?</label><select class="t" id="wh_kind">
+         <option value="ordinary">Ordinary motion</option><option value="sj">Summary judgment</option></select></div>`
+      +dateField('wh_d','Return date'),async()=>{
+      const d=pd($('#wh_d').value); if(!d) return toast('Pick the return date');
+      const r=RULES.find(x=>x.k===ruleKey[$('#wh_kind').value]);
+      const dl=await logDeadline(mid,r.k,d,r.filing,`Reported via What Happened — ${key==='motion_received'?'motion received':'motion filed'}, return date ${fmt(d)}`);
+      if(!dl) return toast('Could not compute a due date for that rule — use the Deadlines calculator directly');
+      const draftBy=subtractBusinessDays(pd(dl.due),3);
+      await logInternalObligation(mid,draftLabel,draftBy,`Ahead of ${r.t} (${r.a}), due ${fmt(pd(dl.due))}`);
+      closeDone(`Logged ${r.t} (due ${fmt(pd(dl.due))}) and a drafting target (${fmt(draftBy)})`);
+    });
+    const rc=()=>{ const d=pd($('#wh_d').value); const r=RULES.find(x=>x.k===ruleKey[$('#wh_kind').value]); const due=d&&computeRuleDue(r,d,'');
+      $('#wh_d_calc').innerHTML=due?`<div class="r"><span>Due date for ${label} (${esc(r.a)})</span><span class="mono"><strong>${fmt(due)}</strong></span></div>`
+        +`<div class="r"><span>Drafting target (internal, 3 business days ahead)</span><span class="mono">${fmt(subtractBusinessDays(due,3))}</span></div>`:''; };
+    ['wh_kind','wh_d'].forEach(i=>$('#'+i).addEventListener('input',rc)); rc();
+    return;
+  }
+  if(key==='discovery_received'){
+    shell('Discovery received',
+      `<div class="full"><label>What was it?</label><select class="t" id="wh_type">${DISC_TYPES.map(t=>`<option value="${t.t}">${t.t} — ${t.manual?'no fixed period':t.d+' days'} · ${t.a}</option>`).join('')}</select></div>
+       <div class="full"><label>Date served on us</label><input type="date" id="wh_d" value="${iso(TODAY)}"></div>
+       <div class="full"><div class="derived" id="wh_d_calc"></div></div>`,
+      async()=>{
+        const t=DISC_TYPES.find(x=>x.t===$('#wh_type').value);
+        const manualDue=t.manual?$('#wh_manual')?.value:'';
+        if(t.manual&&!manualDue) return toast('Enter the due date shown on the document');
+        const x=await logDiscoveryItem(mid,t,$('#wh_d').value,'Received from adversary',manualDue);
+        if(!x) return toast('Could not log that item');
+        /* Discovery-response workflow: same bundling as Motion Practice and
+           Complaint/Answer — an internal drafting target ahead of the real
+           response deadline, not just the deadline itself. */
+        const draftBy=subtractBusinessDays(pd(x.dueDate),3);
+        await logInternalObligation(mid,`Draft responses — ${t.t}`,draftBy,`Ahead of ${t.t} (${t.a}), due ${fmt(pd(x.dueDate))}`);
+        closeDone(`Logged to the discovery ledger (due ${fmt(pd(x.dueDate))}) with a drafting target (${fmt(draftBy)})`);
+      });
+    const rc=()=>{
+      const t=DISC_TYPES.find(x=>x.t===$('#wh_type').value), s=pd($('#wh_d').value);
+      if(t.manual){ $('#wh_d_calc').innerHTML=`<div class="r"><span>Due date</span><span class="mono"><input type="date" id="wh_manual" class="t"></span></div>
+        <p class="note" style="margin-top:6px">No NJ rule sets a fixed period for this — enter the date printed on the document.</p>`; return; }
+      if(!s){ $('#wh_d_calc').innerHTML=''; return; }
+      const due=roll(add(s,t.d));
+      $('#wh_d_calc').innerHTML=`<div class="r"><span>Response due (${esc(t.a)})</span><span class="mono"><strong>${fmt(due)}</strong></span></div>`;
+    };
+    ['wh_type','wh_d'].forEach(i=>$('#'+i).addEventListener('input',rc)); rc();
+    return;
+  }
+  if(key==='discovery_extended'||key==='arbitration_scheduled'||key==='trial_scheduled'){
+    const cfg={discovery_extended:{label:'New discovery end date',xKey:'discoveryEndDate',docType:'order extending discovery'},
+      arbitration_scheduled:{label:'Arbitration date',xKey:'arbitrationDate',docType:'arbitration notice'},
+      trial_scheduled:{label:'Trial date',xKey:'trialDate',docType:'trial notice'}}[key];
+    shell(WHAT_HAPPENED_EVENTS.find(e=>e.k===key).t,dateFieldPlain('wh_d',cfg.label),async()=>{
+      const d=pd($('#wh_d').value); if(!d) return toast('Pick a date');
+      const x={documentType:cfg.docType}; x[cfg.xKey]=iso(d);
+      const n=proposeDateChanges(m,x,'Reported via What Happened');
+      touch(m); await save(); SyncFS.scheduleSync();
+      $('#modalHost').innerHTML=''; renderAll();
+      if(n) openMatter(m);
+      toast(n?'Proposed — review and accept in the matter':'Matches what’s already on file — nothing to change');
+    });
+    return;
+  }
+  if(key==='arbitration_award'){
+    /* Deciding whether to request a trial de novo (and filing if so) isn't
+       a drafting task the way an answer or opposition is — no internal
+       obligation bundle here, just the real R. 4:21A-6(b)(1) deadline. */
+    shell('Arbitration award entered',dateField('wh_d','Date award was filed'),async()=>{
+      const d=pd($('#wh_d').value); if(!d) return toast('Pick the date the award was filed');
+      if(DB.deadlines.some(x=>x.matterId===mid&&x.ruleKey==='denovo'&&!isDeadlineDone(x)))
+        return toast('An open trial de novo deadline already exists for this matter — close it as Moot in the Deadlines ledger first if this date needs correcting');
+      const r=RULES.find(x=>x.k==='denovo');
+      const dl=await logDeadline(mid,'denovo',d,r.filing,`Reported via What Happened — arbitration award filed ${fmt(d)}`);
+      if(!dl) return toast('Could not compute a due date — use the Deadlines calculator directly');
+      closeDone(`Trial de novo deadline logged (due ${fmt(pd(dl.due))})`);
+    });
+    const rc=()=>{ const d=pd($('#wh_d').value); const r=RULES.find(x=>x.k==='denovo'); const due=d&&computeRuleDue(r,d,'');
+      $('#wh_d_calc').innerHTML=due?`<div class="r"><span>Trial de novo deadline (${esc(r.a)})</span><span class="mono"><strong>${fmt(due)}</strong></span></div>`:''; };
+    $('#wh_d').addEventListener('input',rc); rc();
+    return;
+  }
+  if(key==='ime_scheduled'){
+    /* m.ime stays free text (it's always allowed a status like "scheduled"
+       with no firm date yet, per the Matters editor) — the actual date
+       field here is only ever used to compute the follow-up obligation,
+       and is optional for exactly that reason. */
+    shell('IME scheduled',
+      `<div class="full"><label>IME date or status</label><input class="t" id="wh_ime" value="${esc(m.ime||'')}" placeholder="date or scheduled"></div>
+       <div class="full"><label>Actual IME date (optional — for a report follow-up reminder)</label><input type="date" id="wh_d"></div>
+       <div class="full"><div class="derived" id="wh_d_calc"></div></div>`,
+      async()=>{
+        m.ime=$('#wh_ime').value.trim(); touch(m); await save(); SyncFS.scheduleSync();
+        const imeDate=pd($('#wh_d').value);
+        if(imeDate){
+          if(DB.deadlines.some(x=>x.matterId===mid&&x.ruleKey===null&&x.title==='Follow up on IME report'&&!isDeadlineDone(x)))
+            return closeDone('IME updated — a report follow-up reminder is already open for this matter, so a second one was not created');
+          const followUp=add(imeDate,14);
+          await logInternalObligation(mid,'Follow up on IME report',followUp,`IME held ${fmt(imeDate)} — report not yet received as of this reminder`);
+          closeDone(`IME updated with a report follow-up on ${fmt(followUp)}`);
+        } else closeDone('IME updated');
+      });
+    const rc=()=>{ const d=pd($('#wh_d').value); const followUp=d&&add(d,14);
+      $('#wh_d_calc').innerHTML=followUp?`<div class="r"><span>Report follow-up reminder (14 days)</span><span class="mono"><strong>${fmt(followUp)}</strong></span></div>`:''; };
+    $('#wh_d').addEventListener('input',rc); rc();
+    return;
+  }
+  if(key==='order_entered'){
+    shell('Order entered',
+      `<div class="full"><label>What did the order change?</label><select class="t" id="wh_kind">
+         <option value="ded">Discovery end date</option><option value="arb">Arbitration date</option>
+         <option value="trial">Trial date</option><option value="note">Nothing — just log a note</option></select></div>
+       <div class="full" id="wh_dateWrap">${dateFieldPlain('wh_d','New date')}</div>
+       <div class="full"><label>Note (optional)</label><input class="t" id="wh_note" placeholder="what the order said"></div>`,
+      async()=>{
+        const kind=$('#wh_kind').value, note=$('#wh_note').value.trim();
+        if(kind==='note'){
+          m.notes=(m.notes?m.notes+' ':'')+`[${fmt(TODAY)} Order entered${note?': '+note:''}]`;
+          touch(m); await save(); SyncFS.scheduleSync(); closeDone('Noted on the matter'); return;
+        }
+        const d=pd($('#wh_d').value); if(!d) return toast('Pick the new date');
+        const map={ded:{xKey:'discoveryEndDate',docType:'order extending discovery'},
+          arb:{xKey:'arbitrationDate',docType:'order'},trial:{xKey:'trialDate',docType:'order'}}[kind];
+        const x={documentType:map.docType}; x[map.xKey]=iso(d);
+        const n=proposeDateChanges(m,x,`Order entered${note?' — '+note:''}`);
+        if(note) m.notes=(m.notes?m.notes+' ':'')+`[${fmt(TODAY)} Order entered: ${note}]`;
+        touch(m); await save(); SyncFS.scheduleSync();
+        $('#modalHost').innerHTML=''; renderAll();
+        if(n) openMatter(m);
+        toast(n?'Proposed — review and accept in the matter':'Matches what’s already on file — nothing to change');
+      });
+    const toggleDate=()=>{ $('#wh_dateWrap').style.display=$('#wh_kind').value==='note'?'none':''; };
+    $('#wh_kind').addEventListener('input',toggleDate); toggleDate();
+    return;
+  }
+  if(key==='other'){
+    $('#modalHost').innerHTML='';
+    $('#tabs').querySelector('[data-p="deadlines"]')?.click();
+    newDeadline(mid);
+    return;
+  }
 }
 
 /* ══════════ LETTERS ══════════ */
@@ -1717,8 +2244,13 @@ function buildLetter(kind,m,opt){
       + `The basis for this request is [reason]. [Adversary] has been contacted and [consents / does not consent] to this request. This is the [first] such request.\n\n`
       + `We are available on [proposed dates] and thank the Court for its consideration.`+sign;
     case 'deadlinenotice': {
+      /* ruleKey filters out internal workflow obligations (e.g. a drafting
+         target from logInternalObligation) — this memo is specifically
+         about court deadlines, and mixing in an internal to-do under a
+         "FILE WITH COURT" boilerplate would make exactly the kind of
+         record this memo exists to get right less reliable, not more. */
       const list=(opt&&opt.deadlineId) ? DB.deadlines.filter(x=>x.id===opt.deadlineId)
-        : DB.deadlines.filter(x=>x.matterId===m.id&&x.status==='Open').sort((a,b)=>(pd(a.due)||9e15)-(pd(b.due)||9e15));
+        : DB.deadlines.filter(x=>x.matterId===m.id&&!isDeadlineDone(x)&&x.ruleKey).sort((a,b)=>(pd(a.due)||9e15)-(pd(b.due)||9e15));
       if(!list.length) return `${today}\n\nTO:\tFile\nFROM:\t${me.n}\nRE:\t${cap} — Docket No. ${dk} — Our File No. ${m.file}\nSUBJECT:\tUpcoming Court Deadlines\n\nNo open tracked deadlines for this matter as of this date.`+sign;
       const lines=list.map(x=>{const fb=filingBadge(x.filing), due=pd(x.due);
         return `•  ${x.title} (${x.authority}) — due ${fmtLong(due)}${due?` (${diff(TODAY,due)} days)`:''} — ${fb.t}${x.notes?`\n   Note: ${x.notes}`:''}`;}).join('\n\n');
@@ -1852,7 +2384,19 @@ function renderTasks(){
             <button class="sm ghost" data-tx="${t.id}">×</button></div></div>`;}).join('')
         : '<p class="note">Nothing here.</p>'}</div>`;
   }).join('');
-  $$('[data-tk]').forEach(c=>c.onclick=async()=>{const t=DB.tasks.find(x=>x.id===c.dataset.tk);t.done=true;touch(t);await save();SyncFS.scheduleSync();renderAll();});
+  $$('[data-tk]').forEach(c=>c.onclick=async()=>{
+    const t=DB.tasks.find(x=>x.id===c.dataset.tk);
+    /* A task linked to a filing deadline is NOT just a checkbox — checking
+       it here used to mark the task done directly, which silently
+       finished the obligation without ever going through the filing gate
+       (no confirmation, no status change on the deadline itself, no
+       record of how it was closed). Route to the same gate the Deadlines
+       ledger uses instead, so there is exactly one way a filing obligation
+       actually closes out, not two. */
+    const d=t.linkedDeadlineId&&DB.deadlines.find(x=>x.id===t.linkedDeadlineId);
+    if(d&&!isDeadlineDone(d)){ renderAll(); confirmFilingModal(d.id); return; }
+    t.done=true;touch(t);await save();SyncFS.scheduleSync();renderAll();
+  });
   $$('[data-tx]').forEach(b=>b.onclick=async()=>{tomb('tasks',b.dataset.tx);DB.tasks=DB.tasks.filter(x=>x.id!==b.dataset.tx);await save();SyncFS.scheduleSync();renderAll();});
 }
 function newTask(){
@@ -2082,24 +2626,118 @@ function suggestDeadlineFromExtract(x){
   }
   return null;
 }
+/* ══════════ DATE CONFLICT DETECTION ══════════
+   The one job this exists to do: intake NEVER silently overwrites a
+   material docket date again. A PDF read proposes a change; a human
+   accepts it. Nothing here mutates existing.currentDED/arbitration/trial —
+   it only appends to existing.pendingDateChanges for the matter modal to
+   show and resolve. See acceptDateChange/keepCurrentDate/reviewPendingDate
+   below for where mutation (and history logging) actually happens. */
+const DATE_PROPOSAL_FIELDS=[
+  {field:'currentDED',  label:'Discovery End Date', extractKey:'discoveryEndDate', onlyFromOrder:true},
+  {field:'arbitration', label:'Arbitration Date',    extractKey:'arbitrationDate'},
+  {field:'trial',       label:'Trial Date',          extractKey:'trialDate'}
+];
+function proposeDateChanges(existing,x,source){
+  const isOrder=/order|extend/i.test(x.documentType||'');
+  existing.pendingDateChanges=existing.pendingDateChanges||[];
+  let added=0;
+  DATE_PROPOSAL_FIELDS.forEach(c=>{
+    const extracted=x[c.extractKey]; if(!extracted) return;
+    if(c.onlyFromOrder&&!isOrder) return;
+    const current=existing[c.field]||'';
+    if(current===extracted) return; // Confirmed — matches what's already on file, nothing to propose
+    existing.pendingDateChanges=existing.pendingDateChanges.filter(p=>p.field!==c.field); // superseded by this newer read
+    existing.pendingDateChanges.push({id:uid(),field:c.field,label:c.label,current,proposed:extracted,source,
+      confidence:(x.uncertain||[]).includes(c.extractKey)?'Review':'High',at:new Date().toISOString()});
+    added++;
+  });
+  return added;
+}
+function pendingChangeCard(p){
+  const row=(a,b)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0">${a}${b}</div>`;
+  return `<div class="warn" style="margin-bottom:10px" data-pdc="${p.id}">
+    <strong>⚠ Proposed Date Change — ${esc(p.label)}</strong>
+    <div style="margin-top:6px">
+      ${row('<span>Current</span>',`<span class="mono">${p.current?fmt(pd(p.current)):'(none on file)'}</span>`)}
+      ${row('<span>PDF detected</span>',`<span class="mono"><strong>${fmt(pd(p.proposed))}</strong></span>`)}
+      ${row('<span>Source</span>',`<span class="mono">${esc(p.source)}</span>`)}
+      ${row('<span>Confidence</span>',`<span class="mono">${esc(p.confidence)}</span>`)}
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="sm" data-pdc-keep="${p.id}">Keep Current</button>
+      <button class="sm primary" data-pdc-accept="${p.id}">Accept New Date</button>
+      <button class="sm" data-pdc-review="${p.id}" title="Leaves this pending — the app doesn't retain the source document to show you, by design (see Confidentiality in the README)">Decide Later</button>
+    </div></div>`;
+}
+function dateHistoryBlock(m){
+  if(!m.dateHistory||!m.dateHistory.length) return '';
+  const rows=m.dateHistory.slice().sort((a,b)=>(b.at||'').localeCompare(a.at||''));
+  return `<div class="card" style="margin-top:12px"><h3>Date history</h3>${rows.map(h=>
+    `<div style="padding:6px 0;border-bottom:1px solid var(--rule2);font-size:12.5px">
+      <strong>${esc(h.label)} changed</strong><br>${h.from?fmt(pd(h.from)):'(none)'} → <strong>${fmt(pd(h.to))}</strong>
+      <div class="meta">${new Date(h.at).toLocaleString()} · ${esc(h.by)} · ${esc(h.source)}</div></div>`).join('')}</div>`;
+}
+/* Mutation + the actual history entry happen here — nowhere else should
+   ever write existing.currentDED/arbitration/trial directly from an
+   intake read. */
+async function acceptDateChange(m,proposalId){
+  const p=m.pendingDateChanges.find(x=>x.id===proposalId); if(!p) return;
+  const from=m[p.field]||'';
+  /* The proposal is a snapshot of what the field looked like when the PDF
+     was read. If something else changed that same field since then (a
+     manual correction, another accepted proposal, a sync from a
+     teammate), applying the stale snapshot would overwrite a newer value
+     — the exact silent-overwrite bug this release exists to fix, just
+     reached through the "safe" path instead of the old direct-mutation
+     one. Refuse and drop the stale card rather than guess. */
+  if(from!==p.current){
+    m.pendingDateChanges=m.pendingDateChanges.filter(x=>x.id!==proposalId);
+    touch(m); await save(); SyncFS.scheduleSync(); renderAll(); openMatter(m);
+    toast(`${p.label} changed since this was proposed — re-run intake on the document if the new date still needs logging`);
+    return;
+  }
+  if(p.field==='currentDED'&&!m.originalDED) m.originalDED=from||'';
+  m[p.field]=p.proposed;
+  m.dateHistory=m.dateHistory||[];
+  m.dateHistory.push({field:p.field,label:p.label,from,to:p.proposed,at:new Date().toISOString(),by:WHO,source:p.source});
+  m.pendingDateChanges=m.pendingDateChanges.filter(x=>x.id!==proposalId);
+  /* Runs BEFORE the renderAll() below, so the OJ deadline (if any gets
+     created) is already in DB.deadlines by the time the Deadlines tab
+     and Dashboard re-render — otherwise it stays invisible until some
+     unrelated later action happens to re-render those panels. */
+  if(p.field==='trial') await maybeLogOJForTrial(m.id,p.proposed);
+  touch(m); await save(); SyncFS.scheduleSync(); renderAll();
+  if(GCal.status.state==='connected') GCal.syncMatter(m);
+  openMatter(m); toast('Date accepted');
+}
+async function keepCurrentDate(m,proposalId){
+  m.pendingDateChanges=m.pendingDateChanges.filter(x=>x.id!==proposalId);
+  touch(m); await save(); SyncFS.scheduleSync(); renderAll();
+  openMatter(m); toast('Kept the existing date — nothing changed');
+}
+/* "Decide Later" — not "Review PDF": the source document is never kept
+   past extraction (see the Confidentiality section of the README), so
+   there is nothing on file to show. This just defers the decision; go
+   look at the actual document outside the app, then come back. */
+function reviewPendingDate(){
+  toast("Left pending — nothing changed. The source document isn't stored here; check it where it actually lives, then come back to Keep or Accept.");
+}
 function reviewExtract(x,src){
   const hasProviders=Array.isArray(x.providers)&&x.providers.some(p=>p&&p.name&&p.name.trim());
   if(hasProviders||x.documentType==='medical providers chart'){ reviewProvidersExtract(x,src); return; }
   const existing=x.docketNumber?DB.matters.find(m=>norm(m.docket)===norm(x.docketNumber)):null;
-  const isOrder=/order|extend/i.test(x.documentType||'');
   const suggestion=suggestDeadlineFromExtract(x);
   if(existing){
-    if(isOrder&&x.discoveryEndDate){ existing.originalDED=existing.originalDED||existing.currentDED||'';
-      existing.currentDED=x.discoveryEndDate; }
-    if(x.arbitrationDate) existing.arbitration=x.arbitrationDate;
-    if(x.trialDate) existing.trial=x.trialDate;
-    if(x.judge&&!existing.judge) existing.judge=x.judge;
+    const proposed=proposeDateChanges(existing,x,src); // never mutates currentDED/arbitration/trial directly — see above
+    if(x.judge&&!existing.judge) existing.judge=x.judge; // text field, blank-only fill — not a material date, no conflict risk
     existing.lastActivity=iso(TODAY);
     existing.notes=(existing.notes?existing.notes+' ':'')+`[${fmt(TODAY)} ${src}: ${x.summary||x.documentType}]`
       +(suggestion?` ${suggestion}`:'');
     openMatter(existing);
     if(suggestion) setTimeout(()=>{const el=document.getElementById('e_notes'); if(el) el.classList.add('flagme');},30);
-    toast(suggestion?'Matched an existing matter — a deadline needs logging':'Matched an existing matter — review the update');
+    toast(proposed?`Matched an existing matter — ${proposed} date change${proposed>1?'s':''} need${proposed>1?'':'s'} your review`
+      :(suggestion?'Matched an existing matter — a deadline needs logging':'Matched an existing matter — review the update'));
     return;
   }
   const m={id:uid(),side:'defense',name:x.caseName||'',docket:x.docketNumber||'',venue:(x.venue||'').toUpperCase(),
@@ -2163,7 +2801,7 @@ function buildIcs(){
     const m=mById(x.matterId); if(!m) return;
     ev(pd(x.dueDate),`${m.owner}: ${m.name} - ${x.item.toUpperCase()} DUE - ${m.venue||''}`,`${x.direction}. Served ${fmt(pd(x.served))}. ${x.authority}.`);
   });
-  DB.deadlines.filter(d=>d.status==='Open'&&d.due).forEach(d=>{
+  DB.deadlines.filter(d=>!isDeadlineDone(d)&&d.due).forEach(d=>{
     const m=mById(d.matterId); if(!m) return;
     const prefix=d.filing===true?'FILE WITH COURT':d.filing==='confirm'?'CONFIRM FILING REQ.':'DEADLINE';
     ev(pd(d.due),`${m.owner}: ${m.name} - ${prefix}: ${d.title} - ${m.venue||''}`,`${d.authority}. Trigger ${fmt(pd(d.trigger))}.${d.notes?' '+d.notes:''}`);
@@ -2285,13 +2923,14 @@ $('#recPicker').onchange=e=>{handleFiles([...e.target.files],recChartOpts);e.tar
 recDrop.addEventListener('drop',e=>handleFiles([...e.dataTransfer.files],recChartOpts));
 
 $('#btnManual').onclick=()=>openMatter(null);
+$('#btnWhatHappened').onclick=openWhatHappened;
 $('#btnNewMatter').onclick=()=>openMatter(null);
 $('#btnKey').onclick=()=>{$$('#tabs button').forEach(x=>x.classList.toggle('on',x.dataset.p==='settings'));
   $$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-settings'));window.scrollTo({top:0});};
 ['fSide','fStatus','fOwner','fSearch'].forEach(i=>$('#'+i).addEventListener('input',renderMatters));
 $('#sentMatterFilter').addEventListener('input',renderSentLetters);
 ['calcRule','calcFrom','calcTrack'].forEach(i=>$('#'+i).addEventListener('input',runCalc));
-$('#btnNewDeadline').onclick=newDeadline;
+$('#btnNewDeadline').onclick=()=>newDeadline();
 $('#btnNewDisc').onclick=newDiscovery;
 $('#btnNewRec').onclick=newRecord;
 $('#btnNewTask').onclick=newTask;
