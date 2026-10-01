@@ -280,7 +280,20 @@ tbody tr:hover td{background:#FCFCFA}
   <h2 class="sec">Deadline engine</h2>
   <p class="sub">New Jersey computations with rule cites. Weekends and court holidays roll forward per R. 1:3-1.</p>
   <div class="card">
+    <h3>Matter deadlines</h3>
+    <p class="note" style="margin-bottom:10px">Logged against a real matter — these sync to Google Calendar with a follow-up reminder ladder and, for anything that must be filed with the court, a linked task on the Task board.</p>
+    <div class="row" style="margin-bottom:12px">
+      <select class="t" id="dlMatter" style="max-width:320px"></select>
+      <button id="btnNewDeadline" class="primary">Log deadline</button>
+    </div>
+    <div class="tw"><table><thead><tr>
+      <th style="min-width:210px">Matter</th><th>Deadline</th><th>Due</th><th>Days</th><th>Filing</th><th>Status</th><th></th>
+    </tr></thead><tbody id="dlRows"></tbody></table>
+    <div class="empty" id="dlEmpty">Nothing logged yet.</div></div>
+  </div>
+  <div class="card">
     <h3>Calculator</h3>
+    <p class="note" style="margin-bottom:10px">A scratch pad for a quick "what if" — logging it above is what actually syncs to Calendar and tasks.</p>
     <div class="grid3">
       <div><label>Rule</label><select class="t" id="calcRule"></select></div>
       <div><label>Trigger date</label><input type="date" id="calcFrom"></div>
@@ -293,7 +306,7 @@ tbody tr:hover td{background:#FCFCFA}
   <div class="card">
     <h3>Rule reference</h3>
     <p class="note" style="margin-bottom:10px" id="ruleVerifyNote"></p>
-    <div class="tw"><table><thead><tr><th>Computation</th><th>Authority</th><th>Interval</th><th>Verification</th></tr></thead><tbody id="ruleRows"></tbody></table></div>
+    <div class="tw"><table><thead><tr><th>Computation</th><th>Authority</th><th>Interval</th><th>Filing?</th><th>Verification</th></tr></thead><tbody id="ruleRows"></tbody></table></div>
   </div>
   <div class="card">
     <h3>Court holidays</h3>
@@ -469,8 +482,8 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const K_DATA='gbr-ops-v1', K_KEY='gbr-ops-key', K_WHO='gbr-ops-who';
 /* `deleted` holds tombstones {id, at} per collection so a sync merge never
    resurrects something someone deleted — see mergeDB() below. */
-let DB={matters:[],discovery:[],records:[],tasks:[],letters:[],log:[],
-  deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[]}};
+let DB={matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[],log:[],
+  deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[]}};
 let APIKEY='', WHO='CJG';
 const TODAY=sod(new Date());
 
@@ -588,46 +601,63 @@ const TRACK_DAYS={I:150,II:300,III:450,IV:450};
              strong "probably right" signal, not a substitute for looking
              the rule up before something outcome-determinative rides on it.
      'unv' — not checked in this app at all.
+   `filing` marks whether the thing this deadline produces gets FILED WITH
+   THE COURT, as opposed to served on an adversary or just tracked:
+     true     — a document gets filed with the court by this date.
+     false    — service on an adversary, or an internally-tracked date;
+                nothing goes to the court itself.
+     'confirm'— practice varies by vicinage/judge or the authority doesn't
+                squarely say; treat as a filing until someone checks.
+   This flag drives the "FILE WITH COURT" calendar-event prefix, the
+   auto-created Task for filing deadlines, and the Filing? column below —
+   it is a practical flag for routing reminders, not itself researched
+   with the same rigor as `v`. Confirm it against the rule text the first
+   time it actually matters for a given matter.
    RULES_LAST_REVIEWED (below) drives the summary line and should move
    forward whenever this table gets a fresh pass.                          */
 const RULES_LAST_REVIEWED='9/1/2026';
 const RULES=[
- {k:'answer',      t:'Answer to complaint',                a:'R. 4:6-1(a)',            d:35,  from:'Service of summons and complaint', v:'sec'},
- {k:'ded',         t:'Discovery end date by track',        a:'R. 4:24-1(a)',           d:null,from:'First defendant answering — or 90 days after the first defendant is served, if earlier', v:'sec', track:true,
+ {k:'answer',      t:'Answer to complaint',                a:'R. 4:6-1(a)',            d:35,  from:'Service of summons and complaint', v:'sec', filing:true},
+ {k:'ded',         t:'Discovery end date by track',        a:'R. 4:24-1(a)',           d:null,from:'First defendant answering — or 90 days after the first defendant is served, if earlier', v:'sec', track:true, filing:false,
    note:'The clock runs from whichever of those two triggers comes first — a defendant who delays answering does not push the DED out past the 90-day service trigger.'},
- {k:'rog',         t:'Answers to interrogatories',         a:'R. 4:17-4(b)',           d:60,  from:'Service of interrogatories', v:'sec'},
- {k:'ntp',         t:'Response to notice to produce',      a:'R. 4:18-1(b)',           d:35,  from:'Service of the notice', v:'sec'},
- {k:'ntp50',       t:'Response — floor for a served defendant', a:'R. 4:18-1(b)',      d:50,  from:'Service of the summons and complaint on that defendant', v:'sec',
+ {k:'rog',         t:'Answers to interrogatories',         a:'R. 4:17-4(b)',           d:60,  from:'Service of interrogatories', v:'sec', filing:false},
+ {k:'ntp',         t:'Response to notice to produce',      a:'R. 4:18-1(b)',           d:35,  from:'Service of the notice', v:'sec', filing:false},
+ {k:'ntp50',       t:'Response — floor for a served defendant', a:'R. 4:18-1(b)',      d:50,  from:'Service of the summons and complaint on that defendant', v:'sec', filing:false,
    note:'50-day floor runs from that defendant’s own service of process, not specifically from being served "together with" the notice to produce.'},
- {k:'motfile',     t:'Motion — file and serve',            a:'R. 1:6-3(a)',            d:-16, from:'Return date', v:'pub'},
- {k:'motopp',      t:'Opposition to motion',               a:'R. 1:6-3(a)',            d:-8,  from:'Return date', v:'sec'},
- {k:'motreply',    t:'Reply on motion',                    a:'R. 1:6-3(a)',            d:-4,  from:'Return date', v:'sec',
+ {k:'motfile',     t:'Motion — file and serve',            a:'R. 1:6-3(a)',            d:-16, from:'Return date', v:'pub', filing:true},
+ {k:'motopp',      t:'Opposition to motion',               a:'R. 1:6-3(a)',            d:-8,  from:'Return date', v:'sec', filing:true},
+ {k:'motreply',    t:'Reply on motion',                    a:'R. 1:6-3(a)',            d:-4,  from:'Return date', v:'sec', filing:true,
    note:'Only 4 days of lead time. This calculator counts all calendar days and rolls only the final date under R. 1:3-1; one source suggested periods under 7 days may exclude intervening weekends/holidays from the count itself instead, which this app does not implement — confirm timeliness independently given the short fuse.'},
- {k:'crossmot',    t:'Cross-motion — file and serve',      a:'R. 1:6-3(b)',            d:-8,  from:'Return date', v:'sec',
+ {k:'crossmot',    t:'Cross-motion — file and serve',      a:'R. 1:6-3(b)',            d:-8,  from:'Return date', v:'sec', filing:true,
    note:'Corrected 9/1/2026: a cross-motion is filed and served WITH the opposition papers — the same 8-day deadline, not an independent 15-day schedule.'},
- {k:'sjfile',      t:'Summary judgment — file and serve',  a:'R. 4:46-1',              d:-28, from:'Return date', v:'sec'},
- {k:'sjopp',       t:'Summary judgment — opposition',      a:'R. 4:46-1',              d:-10, from:'Return date', v:'sec'},
- {k:'sjlast',      t:'Summary judgment — latest return',   a:'R. 4:46-1',              d:-30, from:'Trial date', v:'sec'},
- {k:'extmotion',   t:'Motion to extend discovery — file',  a:'R. 4:24-1(c) + R. 1:6-3(a)', d:null, from:'Discovery end date', v:'sec', special:'ext',
+ {k:'sjfile',      t:'Summary judgment — file and serve',  a:'R. 4:46-1',              d:-28, from:'Return date', v:'sec', filing:true},
+ {k:'sjopp',       t:'Summary judgment — opposition',      a:'R. 4:46-1',              d:-10, from:'Return date', v:'sec', filing:true},
+ {k:'sjlast',      t:'Summary judgment — latest return',   a:'R. 4:46-1',              d:-30, from:'Trial date', v:'sec', filing:false,
+   note:'This date is a calendar constraint (the last return date the court will hear), not itself a document that gets filed.'},
+ {k:'extmotion',   t:'Motion to extend discovery — file',  a:'R. 4:24-1(c) + R. 1:6-3(a)', d:null, from:'Discovery end date', v:'sec', special:'ext', filing:true,
    note:'The day count here is a practice convention (working back from the DED using the ordinary 16-day motion lead time), not a number the rule itself states. The only hard requirement is that the extension motion be filed — and, per case law, decided — before the discovery end date passes.'},
- {k:'consent60',   t:'Consent extension of discovery',     a:'R. 4:24-1(c)',           d:60,  from:'Current discovery end date', v:'pub'},
- {k:'denovo',      t:'Trial de novo after arbitration',    a:'R. 4:21A-6(b)(1)',       d:30,  from:'Filing of the arbitration award', v:'sec',
+ {k:'consent60',   t:'Consent extension of discovery',     a:'R. 4:24-1(c)',           d:60,  from:'Current discovery end date', v:'pub', filing:'confirm',
+   note:'No motion is required, but many vicinages still expect the consent stipulation e-filed for the docket to reflect the new DED — confirm local practice before assuming otherwise.'},
+ {k:'denovo',      t:'Trial de novo after arbitration',    a:'R. 4:21A-6(b)(1)',       d:30,  from:'Filing of the arbitration award', v:'sec', filing:true,
    note:'A July 2025 rule amendment added a 10-day grace period available on a good-cause motion after the 30 days runs — do not treat 30 days as an absolute bar without checking for a pending grace application.'},
- {k:'oj',          t:'Offer of judgment — latest service', a:'R. 4:58-1',              d:-20, from:'Trial date', v:'sec'},
- {k:'appeal',      t:'Notice of appeal as of right',       a:'R. 2:4-1(a)',            d:45,  from:'Entry of final judgment', v:'sec'},
- {k:'recon',       t:'Motion for reconsideration',         a:'R. 4:49-2',              d:20,  from:'Service of the order with notice of entry', v:'sec',
+ {k:'oj',          t:'Offer of judgment — latest service', a:'R. 4:58-1',              d:-20, from:'Trial date', v:'sec', filing:false,
+   note:'Served on the adversary, not filed with the court unless and until it becomes relevant to a fee application.'},
+ {k:'appeal',      t:'Notice of appeal as of right',       a:'R. 2:4-1(a)',            d:45,  from:'Entry of final judgment', v:'sec', filing:true},
+ {k:'recon',       t:'Motion for reconsideration',         a:'R. 4:49-2',              d:20,  from:'Service of the order with notice of entry', v:'sec', filing:true,
    note:'Applies to final orders/judgments. An interlocutory order is reviewable "at any time" before final judgment under R. 4:42-2, not on this 20-day clock.'},
- {k:'aom',         t:'Affidavit of merit',                 a:'N.J.S.A. 2A:53A-27',     d:60,  from:'Answer to the complaint', v:'sec', note:'Extendable by one additional 60 days (120 total) for good cause.'},
- {k:'tcanotice',   t:'Tort Claims Act notice',             a:'N.J.S.A. 59:8-8',        d:90,  from:'Accrual of the claim', v:'sec'},
- {k:'tcasuit',     t:'Earliest suit after TCA notice',     a:'N.J.S.A. 59:8-8',        from:'Service of the notice', v:'sec', special:'months', n:6,
-   note:'Statute says "six months," not "180 days" — computed here by calendar month, not a fixed day count.'},
- {k:'solpi',       t:'Personal injury limitations',        a:'N.J.S.A. 2A:14-2',       from:'Accrual of the claim', v:'sec', special:'years', n:2,
+ {k:'aom',         t:'Affidavit of merit',                 a:'N.J.S.A. 2A:53A-27',     d:60,  from:'Answer to the complaint', v:'sec', filing:'confirm',
+   note:'Served on defense counsel; whether it must also be filed with the court (as opposed to just served) varies by practice — confirm. Extendable by one additional 60 days (120 total) for good cause.'},
+ {k:'tcanotice',   t:'Tort Claims Act notice',             a:'N.J.S.A. 59:8-8',        d:90,  from:'Accrual of the claim', v:'sec', filing:false,
+   note:'Served on the public entity directly, not filed with any court.'},
+ {k:'tcasuit',     t:'Earliest suit after TCA notice',     a:'N.J.S.A. 59:8-8',        from:'Service of the notice', v:'sec', special:'months', n:6, filing:false,
+   note:'Statute says "six months," not "180 days" — computed here by calendar month, not a fixed day count. This date itself is not a filing; the complaint that follows is.'},
+ {k:'solpi',       t:'Personal injury limitations — complaint must be filed by',  a:'N.J.S.A. 2A:14-2',       from:'Accrual of the claim', v:'sec', special:'years', n:2, filing:true,
    note:'Computed by calendar year, not a fixed 730-day count (a day-count approximation silently drifts across leap years). Subject to the discovery rule and other tolling doctrines this calculator does not apply.'},
- {k:'solcontract', t:'Contract limitations',               a:'N.J.S.A. 2A:14-1',       from:'Accrual of the claim', v:'sec', special:'years', n:6,
+ {k:'solcontract', t:'Contract limitations — complaint must be filed by',  a:'N.J.S.A. 2A:14-1',       from:'Accrual of the claim', v:'sec', special:'years', n:6, filing:true,
    note:'Computed by calendar year, not a fixed 2190-day count, for the same leap-year reason as above.'},
- {k:'solminor',    t:'Minor — limitations begins',         a:'N.J.S.A. 2A:14-21',      d:null,from:'18th birthday', v:'sec',
+ {k:'solminor',    t:'Minor — limitations begins',         a:'N.J.S.A. 2A:14-21',      d:null,from:'18th birthday', v:'sec', filing:false,
    note:'Tolled during minority; two years from majority for an ordinary personal-injury claim. Does NOT govern child sexual abuse claims (N.J.S.A. 2A:14-2a/2A:14-2b — a much longer, separate track) or birth-injury medical malpractice (separate 13th-birthday rule) — route those to counsel, not this row.'},
- {k:'subpoena',    t:'Subpoena duces tecum — compliance',  a:'R. 1:9-2',               d:null,from:'Date stated on the subpoena', v:'sec',
+ {k:'subpoena',    t:'Subpoena duces tecum — compliance',  a:'R. 1:9-2',               d:null,from:'Date stated on the subpoena', v:'sec', filing:false,
    note:'No NJ rule sets a fixed statewide response period; comply by whatever date the subpoena itself states. R. 4:14-7(c) is a related but different rule — it requires a deposition document subpoena to be served at least 10 days before the deposition, which is a service deadline, not a response deadline.'}
 ];
 
@@ -654,12 +684,12 @@ function tomb(coll,id){ (DB.deleted[coll]=DB.deleted[coll]||[]).push({id,at:new 
    same record arrives later from a machine that hadn't synced yet. Used by
    both the manual handoff-file import and the automatic folder sync, so
    the two behave identically. */
-const MERGE_COLLS=['matters','discovery','records','tasks','letters'];
+const MERGE_COLLS=['matters','discovery','records','tasks','letters','deadlines'];
 function mergeKey(coll,rec){ return coll==='matters' ? (norm(rec.docket)||rec.file||rec.id) : rec.id; }
 function mergeDB(local,incoming){
   const TOMB_TTL_DAYS=400, cutoff=new Date(Date.now()-TOMB_TTL_DAYS*864e5).toISOString();
-  const out={matters:[],discovery:[],records:[],tasks:[],letters:[],log:local.log||[],
-    deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[]}};
+  const out={matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[],log:local.log||[],
+    deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[]}};
   MERGE_COLLS.forEach(coll=>{
     const delMap=new Map();
     [...((local.deleted&&local.deleted[coll])||[]),...((incoming.deleted&&incoming.deleted[coll])||[])]
@@ -779,11 +809,11 @@ const SyncFS={
       this.status.state='syncing'; renderSyncStatus();
       const fh=await this.handle.getFileHandle(SYNC_FILE,{create:true});
       const text=await (await fh.getFile()).text();
-      let incoming={matters:[],discovery:[],records:[],tasks:[],letters:[],deleted:{}};
+      let incoming={matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[],deleted:{}};
       if(text.trim()){ try{ incoming=JSON.parse(text).db||incoming; }catch(e){} }
       const merged=mergeDB(DB,incoming);
       DB.matters=merged.matters; DB.discovery=merged.discovery; DB.records=merged.records;
-      DB.tasks=merged.tasks; DB.letters=merged.letters; DB.deleted=merged.deleted;
+      DB.tasks=merged.tasks; DB.letters=merged.letters; DB.deadlines=merged.deadlines; DB.deleted=merged.deleted;
       await save();
       const w=await fh.createWritable();
       await w.write(JSON.stringify({app:'GBR Matter Ops',saved:new Date().toISOString(),db:merged},null,2));
@@ -869,7 +899,7 @@ const GCal={
   async upsertEvent(m,it){
     const body={summary:it.summary,description:it.description,
       start:{date:iso(it.date)},end:{date:iso(add(it.date,1))},
-      reminders:{useDefault:false,overrides:[{method:'popup',minutes:7*24*60}]}};
+      reminders:{useDefault:false,overrides:it.reminders||reminderLadder(it.filing)}};
     m.gcal=m.gcal||{};
     const existingId=m.gcal[it.key];
     if(existingId){
@@ -884,6 +914,26 @@ const GCal={
     try{ await this._api('/events/'+encodeURIComponent(m.gcal[key]),{method:'DELETE'}); }catch(e){}
     delete m.gcal[key];
   },
+  /* Generalized pair for records that carry their OWN gcalEventId (tracked
+     deadlines, discovery items, records-chase follow-ups) rather than the
+     matter-level `m.gcal{key:id}` map above, which only fits the five fixed
+     matter fields. Same upsert/delete shape, different id storage. */
+  async upsertEventOn(rec,it){
+    const body={summary:it.summary,description:it.description,
+      start:{date:iso(it.date)},end:{date:iso(add(it.date,1))},
+      reminders:{useDefault:false,overrides:it.reminders||reminderLadder(it.filing)}};
+    if(rec.gcalEventId){
+      try{ await this._api('/events/'+encodeURIComponent(rec.gcalEventId),{method:'PATCH',body:JSON.stringify(body)}); return; }
+      catch(e){ /* removed on the calendar directly — recreate below */ }
+    }
+    const created=await this._api('/events',{method:'POST',body:JSON.stringify(body)});
+    if(created&&created.id) rec.gcalEventId=created.id;
+  },
+  async deleteEventOn(rec){
+    if(!rec.gcalEventId) return;
+    try{ await this._api('/events/'+encodeURIComponent(rec.gcalEventId),{method:'DELETE'}); }catch(e){}
+    delete rec.gcalEventId;
+  },
   async syncMatter(m){
     if(this.status.state!=='connected') return;
     try{
@@ -893,12 +943,56 @@ const GCal={
       touch(m); await save(); SyncFS.scheduleSync();
     }catch(e){ toast('Google Calendar: '+e.message); }
   },
+  async syncDeadline(d){
+    if(this.status.state!=='connected') return;
+    try{
+      if(d.status!=='Open'){ await this.deleteEventOn(d); touch(d); await save(); SyncFS.scheduleSync(); return; }
+      const m=mById(d.matterId); const due=pd(d.due); if(!m||!due) return;
+      const prefix=d.filing===true?'FILE WITH COURT':d.filing==='confirm'?'CONFIRM FILING REQ.':'DEADLINE';
+      await this.upsertEventOn(d,{date:due,filing:d.filing,
+        summary:`${m.owner}: ${m.name} - ${prefix}: ${d.title} - ${m.venue||''}`,
+        description:`${d.authority}. Trigger ${fmt(pd(d.trigger))}.${d.notes?' '+d.notes:''}`});
+      if(!DB.deadlines.includes(d)){ await this.deleteEventOn(d); return; } // deleted/done while the create was in flight
+      touch(d); await save(); SyncFS.scheduleSync();
+    }catch(e){ toast('Google Calendar: '+e.message); }
+  },
+  async syncDiscoveryItem(x){
+    if(this.status.state!=='connected') return;
+    try{
+      if(x.status==='Complete'){ await this.deleteEventOn(x); touch(x); await save(); SyncFS.scheduleSync(); return; }
+      const m=mById(x.matterId); const due=pd(x.dueDate); if(!m||!due) return;
+      await this.upsertEventOn(x,{date:due,filing:false,
+        summary:`${m.owner}: ${m.name} - ${x.item.toUpperCase()} DUE - ${m.venue||''}`,
+        description:`${x.direction}. Served ${fmt(pd(x.served))}. ${x.authority}.`});
+      if(!DB.discovery.includes(x)){ await this.deleteEventOn(x); return; } // deleted/completed while the create was in flight
+      touch(x); await save(); SyncFS.scheduleSync();
+    }catch(e){ toast('Google Calendar: '+e.message); }
+  },
+  async syncRecordItem(r){
+    if(this.status.state!=='connected') return;
+    try{
+      if(r.status==='Received'){ await this.deleteEventOn(r); touch(r); await save(); SyncFS.scheduleSync(); return; }
+      const m=mById(r.matterId); const due=pd(r.nextFollowUp); if(!m||!due) return;
+      await this.upsertEventOn(r,{date:due,filing:false,
+        summary:`${m.owner}: ${m.name} - RECORDS FOLLOW-UP ${r.provider} - ${m.venue||''}`,
+        description:`Stage ${r.stage}. Requested ${fmt(pd(r.requested))}.`});
+      if(!DB.records.includes(r)){ await this.deleteEventOn(r); return; } // deleted/received while the create was in flight
+      touch(r); await save(); SyncFS.scheduleSync();
+    }catch(e){ toast('Google Calendar: '+e.message); }
+  },
   async syncAllMatters(){
     if(this.status.state!=='connected') return toast('Connect Google Calendar first.');
     const live=DB.matters.filter(isLive);
-    toast('Pushing '+live.length+' matters to Google Calendar…');
+    const openDeadlines=DB.deadlines.filter(d=>d.status==='Open');
+    const openDisc=DB.discovery.filter(x=>x.status!=='Complete'&&x.dueDate);
+    const openRec=DB.records.filter(r=>r.status!=='Received'&&r.nextFollowUp);
+    const total=live.length+openDeadlines.length+openDisc.length+openRec.length;
+    toast('Pushing '+total+' calendar items…');
     for(const m of live) await this.syncMatter(m);
-    toast('Done — pushed '+live.length+' matters.');
+    for(const d of openDeadlines) await this.syncDeadline(d);
+    for(const x of openDisc) await this.syncDiscoveryItem(x);
+    for(const r of openRec) await this.syncRecordItem(r);
+    toast('Done — pushed '+total+' items.');
   }
 };
 
@@ -1161,11 +1255,12 @@ function vBadge(v){
 }
 function renderDeadlines(){
   $('#calcRule').innerHTML=RULES.map(r=>`<option value="${r.k}">${r.t} — ${r.a}</option>`).join('');
-  $('#ruleRows').innerHTML=RULES.map(r=>{const b=vBadge(r.v);return `<tr>
+  $('#ruleRows').innerHTML=RULES.map(r=>{const b=vBadge(r.v),fb=filingBadge(r.filing);return `<tr>
     <td><strong>${esc(r.t)}</strong>${r.note?`<div class="meta">${esc(r.note)}</div>`:''}</td>
     <td class="mono">${esc(r.a)}</td>
     <td class="mono">${ruleInterval(r)}
       <div class="meta">${esc(r.from)}</div></td>
+    <td><span class="pill ${fb.c}">${fb.t}</span></td>
     <td><span class="vflag ${b.c}">${b.t}</span></td></tr>`;}).join('');
   const pub=RULES.filter(r=>r.v==='pub').length, sec=RULES.filter(r=>r.v==='sec').length, unv=RULES.filter(r=>r.v==='unv').length;
   $('#ruleVerifyNote').textContent=`Every line carries a verification flag. As of ${RULES_LAST_REVIEWED}: ${pub} checked directly against the official Rules/Statutes text, `
@@ -1181,26 +1276,31 @@ function runCalc(){
   const R=(a,b)=>`<div class="r"><span>${a}</span><span class="mono">${b}</span></div>`;
   if(!from){ $('#calcOut').innerHTML=R('Result','Pick a trigger date'); return; }
   let h=R('Authority',esc(r.a))+R('Trigger',fmt(from)+' — '+esc(r.from));
+  /* The actual rolled/computed date in every branch below comes from
+     computeRuleDue() — the same function the Deadlines ledger logs against
+     — so the Calculator and a logged deadline can never silently disagree
+     on what a rule computes to. Only purely-local display extras (the raw
+     pre-roll date, the return date shown alongside it) stay inline. */
   if(r.special==='ext'){
-    const ret=returnDate(from), file=rollBack(add(ret,-16));
+    const ret=returnDate(from), file=computeRuleDue(r,from,track);
     h+=R('Return date',fmt(ret)+' — last Friday before the DED')
      + R('File and serve by','<strong>'+fmt(file)+'</strong>')
      + R('Days from today',diff(TODAY,file)+'')
      + R('Consent alternative','Stipulate to '+fmt(add(from,60))+' under R. 4:24-1(c)');
   } else if(r.track){
     if(!track){ h+=R('Result','Choose a track'); }
-    else { const raw=add(from,TRACK_DAYS[track]), rolled=roll(raw);
+    else { const raw=add(from,TRACK_DAYS[track]), rolled=computeRuleDue(r,from,track);
       h+=R('Track '+track,TRACK_DAYS[track]+' days')+R('Raw date',fmt(raw))
        +R('After R. 1:3-1 rolling','<strong>'+fmt(rolled)+'</strong>')
        +R('Motion to extend by',fmt(rollBack(add(returnDate(rolled),-16)))); }
   } else if(r.special==='years'||r.special==='months'){
-    const raw = r.special==='years'?addYears(from,r.n):addMonths(from,r.n);
+    const raw=computeRuleDue(r,from,track);
     h+=R('Computed by calendar '+(r.special==='years'?'year':'month')+', not a fixed day count','<strong>'+fmt(raw)+'</strong>')
      +R('Days from today',diff(TODAY,raw)+'')
      +R('Rolling','Not applied — this calculator only rolls court-rule deadlines under R. 1:3-1, not substantive statutory periods. Do not rely on a weekend or holiday to buy an extra day; confirm the computation method independently.');
   } else {
     const raw=add(from,r.d);
-    const rolled=r.d<0?rollBack(raw):roll(raw);
+    const rolled=computeRuleDue(r,from,track);
     h+=R('Raw date',fmt(raw))+R(r.d<0?'Rolled back to a court day':'After R. 1:3-1 rolling','<strong>'+fmt(rolled)+'</strong>')
      +R('Days from today',diff(TODAY,rolled)+'');
     if(r.d<0) h+=R('Direction','Backward-computed — the date moves earlier, never later');
@@ -1211,6 +1311,151 @@ function runCalc(){
       'Unverified — confirm on Westlaw or Lexis');
   if(r.note) h+=R('Note',esc(r.note));
   $('#calcOut').innerHTML=h;
+}
+
+/* ══════════ DEADLINE LEDGER ══════════
+   Tracks a deadline against a real matter — unlike the calculator above,
+   which is just a scratch-pad — so it can carry a status, sync to Google
+   Calendar with a reminder ladder, and (for a filing deadline) surface a
+   linked task. Reuses the same math as the calculator; see computeRuleDue. */
+function computeRuleDue(r,from,track){
+  if(!from) return null;
+  if(r.special==='ext') return rollBack(add(returnDate(from),-16));
+  if(r.track) return track?roll(add(from,TRACK_DAYS[track])):null;
+  if(r.special==='years') return addYears(from,r.n);
+  if(r.special==='months') return addMonths(from,r.n);
+  const raw=add(from,r.d);
+  return r.d<0?rollBack(raw):roll(raw);
+}
+function filingBadge(f){
+  if(f===true) return {c:'p-red',t:'FILE WITH COURT'};
+  if(f==='confirm') return {c:'p-amber',t:'confirm filing?'};
+  return {c:'p-grey',t:'no filing'};
+}
+/* Calendar reminder ladder — a filing deadline gets escalating follow-up
+   popups, not just a single warning, since missing it is the thing this
+   whole feature exists to prevent. Non-filing tracked items get a lighter
+   touch. Shared by every GCal upsert so the ladder stays one definition.
+   28 days, not 30: Google Calendar rejects reminders.overrides[].minutes
+   above 40320 (its documented 4-week cap) — 30 days (43200) would silently
+   fail the API call for every single filing deadline, the one category
+   this feature most needs to land on the Calendar. */
+function reminderLadder(filing){
+  const days = filing===true ? [28,14,7,3,1] : filing==='confirm' ? [21,10,3] : [14,7];
+  return days.map(n=>({method:'popup',minutes:n*24*60}));
+}
+function renderDeadlineLedger(){
+  fillMatterSelect('#dlMatter',true);
+  const rows=DB.deadlines.slice().sort((a,b)=>{
+    if((a.status==='Done')!==(b.status==='Done')) return a.status==='Done'?1:-1;
+    return (pd(a.due)||9e15)-(pd(b.due)||9e15);
+  });
+  $('#dlEmpty').style.display=rows.length?'none':'block';
+  $('#dlRows').innerHTML=rows.map(d=>{
+    const m=mById(d.matterId)||{name:'(matter removed)'};
+    const due=pd(d.due), dd=due?diff(TODAY,due):null, fb=filingBadge(d.filing), done=d.status==='Done';
+    return `<tr${done?' style="opacity:.55"':''}><td><strong>${esc(m.name)}</strong><div class="meta mono">${esc(m.docket||'')}</div></td>
+      <td>${esc(d.title)}<div class="meta mono">${esc(d.authority)}</div>${d.notes?`<div class="meta">${esc(d.notes)}</div>`:''}</td>
+      <td class="mono">${fmt(due)}</td>
+      <td><span class="num c-${done?'grey':tone(dd)}">${dd===null?'—':dd}</span></td>
+      <td><span class="pill ${fb.c}">${fb.t}</span></td>
+      <td><span class="pill ${done?'p-green':'p-amber'}">${esc(d.status)}</span></td>
+      <td>${done?'':`<button class="sm" data-ddone="${d.id}">Done</button> `}<button class="sm" data-dnotice="${d.id}">Draft notice</button> <button class="sm" data-dlx="${d.id}">×</button></td></tr>`;
+  }).join('');
+  $$('[data-ddone]').forEach(b=>b.onclick=async()=>{
+    const d=DB.deadlines.find(i=>i.id===b.dataset.ddone); d.status='Done'; touch(d);
+    if(GCal.status.state==='connected') await GCal.deleteEventOn(d);
+    closeLinkedTask(d.id);
+    await save();SyncFS.scheduleSync();renderAll();toast('Marked done');});
+  $$('[data-dnotice]').forEach(b=>b.onclick=()=>draftDeadlineNotice(b.dataset.dnotice));
+  $$('[data-dlx]').forEach(b=>b.onclick=async()=>{
+    const d=DB.deadlines.find(i=>i.id===b.dataset.dlx);
+    if(GCal.status.state==='connected'&&d) await GCal.deleteEventOn(d);
+    closeLinkedTask(b.dataset.dlx);
+    tomb('deadlines',b.dataset.dlx);DB.deadlines=DB.deadlines.filter(i=>i.id!==b.dataset.dlx);
+    await save();SyncFS.scheduleSync();renderAll();});
+}
+/* A filing deadline auto-creates a linked task (see newDeadline); once the
+   deadline itself is done or removed, that task should never keep showing
+   as open work — nobody should be re-filing something already handled, or
+   working a task whose deadline turned out to be entered by mistake. */
+function closeLinkedTask(deadlineId){
+  const t=DB.tasks.find(x=>x.linkedDeadlineId===deadlineId&&!x.done);
+  if(t){ t.done=true; touch(t); }
+}
+function newDeadline(){
+  const mid=$('#dlMatter').value; if(!mid) return toast('Pick a matter first');
+  $('#modalHost').innerHTML=`<div class="scrim" id="sc"><div class="modal" style="max-width:580px">
+    <div class="mh"><h3>Log a deadline</h3><div class="s">${esc((mById(mid)||{}).name||'')}</div></div>
+    <div class="mb"><div class="grid2">
+      <div class="full"><label>Rule</label><select class="t" id="dl_rule">${RULES.map(r=>`<option value="${r.k}">${r.t} — ${r.a}</option>`).join('')}</select></div>
+      <div><label>Trigger date</label><input type="date" id="dl_from" value="${iso(TODAY)}"></div>
+      <div id="dl_trackWrap" style="display:none"><label>Track</label><select class="t" id="dl_track">
+        <option value="">n/a</option><option value="I">I — 150 days</option><option value="II">II — 300 days</option>
+        <option value="III">III — 450 days</option><option value="IV">IV — 450 days, judge managed</option></select></div>
+      <div class="full"><div class="derived" id="dl_calc"></div></div>
+      <div><label>Requires filing with the court?</label><select class="t" id="dl_filing">
+        <option value="true">Yes — file with the court</option>
+        <option value="false">No — service or tracking only</option>
+        <option value="confirm">Not sure — confirm before relying on this</option></select></div>
+      <div class="full"><label>Notes (optional)</label><input class="t" id="dl_notes" placeholder="e.g. return date, judge, anything case-specific"></div>
+    </div></div>
+    <div class="mf"><button id="dl_cancel">Cancel</button><button class="primary" id="dl_save">Log it</button></div>
+  </div></div>`;
+  const rc=()=>{
+    const r=RULES.find(x=>x.k===$('#dl_rule').value), from=pd($('#dl_from').value), track=$('#dl_track')?$('#dl_track').value:'';
+    $('#dl_trackWrap').style.display=r.track?'':'none';
+    if(!from){ $('#dl_calc').innerHTML='<div class="r"><span>Pick a trigger date</span></div>'; return; }
+    const due=computeRuleDue(r,from,track);
+    $('#dl_calc').innerHTML = due
+      ? `<div class="r"><span>Computed due date</span><span class="mono"><strong>${fmt(due)}</strong></span></div>
+         <div class="r"><span>Days from today</span><span class="mono">${diff(TODAY,due)}</span></div>`
+      : (r.track?'<div class="r"><span>Choose a track</span></div>':'<div class="r"><span>No fixed date — enter manually once known</span></div>');
+  };
+  /* Filing default only resets when the RULE changes — once the person has
+     looked at it and picked an answer (e.g. overriding a 'confirm' rule to
+     Yes because they know it applies here), fixing the trigger date or
+     track should never silently discard that choice. */
+  $('#dl_rule').addEventListener('input',()=>{ $('#dl_filing').value=String(RULES.find(x=>x.k===$('#dl_rule').value).filing); rc(); });
+  ['dl_from','dl_track'].forEach(i=>$('#'+i).addEventListener('input',rc));
+  $('#dl_filing').value=String(RULES.find(x=>x.k===$('#dl_rule').value).filing);
+  rc();
+  $('#dl_cancel').onclick=()=>$('#modalHost').innerHTML='';
+  $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
+  $('#dl_save').onclick=async()=>{
+    const r=RULES.find(x=>x.k===$('#dl_rule').value), from=pd($('#dl_from').value), track=$('#dl_track')?$('#dl_track').value:'';
+    if(!from) return toast('Pick a trigger date');
+    const due=computeRuleDue(r,from,track);
+    if(!due) return toast(r.track?'Choose a track':'This rule has no fixed date to compute — log it once the date is known');
+    const filing=$('#dl_filing').value;
+    const d=touch({id:uid(),matterId:mid,ruleKey:r.k,title:r.t,authority:r.a,
+      trigger:iso(from),due:iso(due),filing:filing==='true'?true:filing==='false'?false:'confirm',
+      notes:$('#dl_notes').value.trim(),status:'Open'});
+    DB.deadlines.push(d);
+    if(d.filing===true){
+      DB.tasks.push(touch({id:uid(),title:`File: ${r.t} — ${(mById(mid)||{}).name||''}`,
+        owner:(mById(mid)||{}).owner||WHO,due:iso(due),matterId:mid,done:false,linkedDeadlineId:d.id}));
+    }
+    await save();SyncFS.scheduleSync();renderAll();$('#modalHost').innerHTML='';toast('Deadline logged');
+    if(GCal.status.state==='connected') GCal.syncDeadline(d);
+  };
+}
+/* Jumps to Letters with the matter and the new notice type pre-selected,
+   drafts it against this one deadline, and drops it in the approval queue
+   — same path a human would take by hand, just pre-filled. */
+function draftDeadlineNotice(deadlineId){
+  const d=DB.deadlines.find(x=>x.id===deadlineId); if(!d) return;
+  const m=mById(d.matterId); if(!m) return toast('Matter not found');
+  $$('#tabs button').forEach(x=>x.classList.toggle('on',x.dataset.p==='letters'));
+  $$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-letters'));
+  window.scrollTo({top:0});
+  fillMatterSelect('#ltrMatter',false); $('#ltrMatter').value=m.id;
+  $('#ltrType').innerHTML=LETTERS.map(l=>`<option value="${l.k}">${l.t}</option>`).join(''); $('#ltrType').value='deadlinenotice';
+  const text=buildLetter('deadlinenotice',m,{deadlineId:d.id});
+  $('#ltrOut').innerHTML=letterhead(text);
+  DB.letters.push(touch({id:uid(),matterId:m.id,type:'Internal notice — upcoming court deadline(s)',by:WHO,
+    date:iso(TODAY),status:'Pending',text,raw:false}));
+  save().then(()=>{SyncFS.scheduleSync();renderLetters();toast('Drafted — sitting in the approval queue');});
 }
 
 /* ══════════ DISCOVERY LEDGER ══════════ */
@@ -1238,7 +1483,9 @@ function renderDiscovery(){
       <td><span class="pill ${x.status==='Complete'?'p-green':x.status==='Overdue'?'p-red':'p-grey'}">${esc(x.status)}</span></td>
       <td><button class="sm" data-dd="${x.id}">Done</button> <button class="sm" data-dx="${x.id}">×</button></td></tr>`;
   }).join('');
-  $$('[data-dd]').forEach(b=>b.onclick=async()=>{const x=DB.discovery.find(i=>i.id===b.dataset.dd);x.status='Complete';touch(x);await save();SyncFS.scheduleSync();renderAll();});
+  $$('[data-dd]').forEach(b=>b.onclick=async()=>{const x=DB.discovery.find(i=>i.id===b.dataset.dd);x.status='Complete';touch(x);
+    if(GCal.status.state==='connected') await GCal.deleteEventOn(x);
+    await save();SyncFS.scheduleSync();renderAll();});
   $$('[data-dx]').forEach(b=>b.onclick=async()=>{tomb('discovery',b.dataset.dx);DB.discovery=DB.discovery.filter(i=>i.id!==b.dataset.dx);await save();SyncFS.scheduleSync();renderAll();});
 }
 function newDiscovery(){
@@ -1274,9 +1521,11 @@ function newDiscovery(){
     const t=DISC_TYPES.find(x=>x.t===$('#d_item').value), s=pd($('#d_served').value);
     const due = t.manual ? ($('#d_manual')?$('#d_manual').value:'') : iso(roll(add(s,t.d)));
     if(t.manual && !due) return toast('Enter the due date shown on the document');
-    DB.discovery.push(touch({id:uid(),matterId:mid,item:t.t,authority:t.a,direction:$('#d_dir').value,
-      served:$('#d_served').value,dueDate:due,status:'Outstanding'}));
+    const x=touch({id:uid(),matterId:mid,item:t.t,authority:t.a,direction:$('#d_dir').value,
+      served:$('#d_served').value,dueDate:due,status:'Outstanding'});
+    DB.discovery.push(x);
     await save();SyncFS.scheduleSync();renderAll();$('#modalHost').innerHTML='';toast('Logged');
+    if(GCal.status.state==='connected') GCal.syncDiscoveryItem(x);
   };
 }
 
@@ -1302,10 +1551,16 @@ function renderRecords(){
     const r=DB.records.find(i=>i.id===b.dataset.rn);
     r.stage=Math.min(r.stage+1,CHASE.length-1);
     r.nextFollowUp=iso(roll(add(pd(r.requested),CHASE[r.stage])));
-    touch(r);await save();SyncFS.scheduleSync();renderAll();toast('Follow-up logged');});
+    touch(r);await save();SyncFS.scheduleSync();renderAll();toast('Follow-up logged');
+    if(GCal.status.state==='connected') GCal.syncRecordItem(r);});
   $$('[data-rr]').forEach(b=>b.onclick=async()=>{
-    const r=DB.records.find(i=>i.id===b.dataset.rr);r.status='Received';touch(r);await save();SyncFS.scheduleSync();renderAll();});
-  $$('[data-rx]').forEach(b=>b.onclick=async()=>{tomb('records',b.dataset.rx);DB.records=DB.records.filter(i=>i.id!==b.dataset.rx);await save();SyncFS.scheduleSync();renderAll();});
+    const r=DB.records.find(i=>i.id===b.dataset.rr);r.status='Received';touch(r);
+    if(GCal.status.state==='connected') await GCal.deleteEventOn(r);
+    await save();SyncFS.scheduleSync();renderAll();});
+  $$('[data-rx]').forEach(b=>b.onclick=async()=>{
+    const r=DB.records.find(i=>i.id===b.dataset.rx);
+    if(GCal.status.state==='connected'&&r) await GCal.deleteEventOn(r);
+    tomb('records',b.dataset.rx);DB.records=DB.records.filter(i=>i.id!==b.dataset.rx);await save();SyncFS.scheduleSync();renderAll();});
 }
 function newRecord(){
   const mid=$('#recMatter').value; if(!mid) return toast('Pick a matter first');
@@ -1323,9 +1578,11 @@ function newRecord(){
   $('#sc').onclick=e=>{if(e.target.id==='sc')$('#modalHost').innerHTML='';};
   $('#r_save').onclick=async()=>{
     const req=$('#r_req').value; if(!$('#r_prov').value.trim()) return toast('Provider name required');
-    DB.records.push(touch({id:uid(),matterId:mid,provider:$('#r_prov').value.trim(),requested:req,
-      auth:$('#r_auth').value,stage:0,nextFollowUp:iso(roll(add(pd(req),CHASE[0]))),status:'Outstanding'}));
+    const r=touch({id:uid(),matterId:mid,provider:$('#r_prov').value.trim(),requested:req,
+      auth:$('#r_auth').value,stage:0,nextFollowUp:iso(roll(add(pd(req),CHASE[0]))),status:'Outstanding'});
+    DB.records.push(r);
     await save();SyncFS.scheduleSync();renderAll();$('#modalHost').innerHTML='';toast('Added to the chase board');
+    if(GCal.status.state==='connected') GCal.syncRecordItem(r);
   };
 }
 function fillMatterSelect(sel,live){
@@ -1345,7 +1602,8 @@ const LETTERS=[
  {k:'deficiency',t:'Discovery deficiency letter'},
  {k:'consent',  t:'R. 4:24-1(c) consent to extend discovery'},
  {k:'adjourn',  t:'Request to adjourn'},
- {k:'ack',      t:'Acknowledgment of correspondence'}
+ {k:'ack',      t:'Acknowledgment of correspondence'},
+ {k:'deadlinenotice', t:'Internal notice — upcoming court deadline(s)'}
 ];
 function letterhead(bodyText){
   const bar=PEOPLE.filter(p=>p.onLH&&!p.counsel);
@@ -1420,7 +1678,7 @@ function hipaaForm(m){
   <p class="h-matter">${esc(m?m.name:'')}${m&&m.docket?' &nbsp;&middot;&nbsp; Docket No. '+esc(m.docket):''}${m&&m.file?' &nbsp;&middot;&nbsp; Our File No. '+esc(m.file):''}</p>
   </div>`;
 }
-function buildLetter(kind,m){
+function buildLetter(kind,m,opt){
   const d=derive(m), today=fmtLong(TODAY);
   const cap=m.name, dk=m.docket||'[docket]', me=PEOPLE.find(p=>p.i===WHO)||PEOPLE.find(p=>p.i==='CJG');
   const sign=`\n\nVery truly yours,\n\nGAUL, BARATTA & ROSELLO, LLC\n\n\n${me.n}\n`;
@@ -1462,6 +1720,16 @@ function buildLetter(kind,m){
       + `We respectfully request an adjournment of the [proceeding] presently scheduled for [date].\n\n`
       + `The basis for this request is [reason]. [Adversary] has been contacted and [consents / does not consent] to this request. This is the [first] such request.\n\n`
       + `We are available on [proposed dates] and thank the Court for its consideration.`+sign;
+    case 'deadlinenotice': {
+      const list=(opt&&opt.deadlineId) ? DB.deadlines.filter(x=>x.id===opt.deadlineId)
+        : DB.deadlines.filter(x=>x.matterId===m.id&&x.status==='Open').sort((a,b)=>(pd(a.due)||9e15)-(pd(b.due)||9e15));
+      if(!list.length) return `${today}\n\nTO:\tFile\nFROM:\t${me.n}\nRE:\t${cap} — Docket No. ${dk} — Our File No. ${m.file}\nSUBJECT:\tUpcoming Court Deadlines\n\nNo open tracked deadlines for this matter as of this date.`+sign;
+      const lines=list.map(x=>{const fb=filingBadge(x.filing), due=pd(x.due);
+        return `•  ${x.title} (${x.authority}) — due ${fmtLong(due)}${due?` (${diff(TODAY,due)} days)`:''} — ${fb.t}${x.notes?`\n   Note: ${x.notes}`:''}`;}).join('\n\n');
+      return `${today}\n\nTO:\tFile\nFROM:\t${me.n}\nRE:\t${cap} — Docket No. ${dk} — Our File No. ${m.file}\nSUBJECT:\tUpcoming Court Deadline${list.length>1?'s':''}\n\n`
+        + `The following deadline${list.length>1?'s remain':' remains'} open on this matter:\n\n${lines}\n\n`
+        + `Anything marked FILE WITH COURT requires a document actually filed with the court by the date shown, not merely served. Confirm status and close it out in the Deadlines tab once addressed.`+sign;
+    }
     default: return head('[Recipient]','Acknowledgment')
       + `We acknowledge receipt of your correspondence of [date] in the above matter.\n\n`
       + `[Substantive response.]\n\nThank you for your courtesy.`+sign;
@@ -1642,6 +1910,8 @@ const SCHEMA=`{
 "discoveryEndDate":"YYYY-MM-DD or null",
 "arbitrationDate":"YYYY-MM-DD or null",
 "trialDate":"YYYY-MM-DD or null",
+"dateOfService":"only for a complaint — the date the summons and complaint were served on this defendant, if printed (e.g. on a proof of service or affidavit of service attached), else null",
+"motionReturnDate":"only for a notice of motion — the return date printed on the notice, else null",
 "judge":"judge surname or null",
 "patientName":"only for a medical providers chart — the patient/plaintiff name printed at the top, else null",
 "providers":"only for a medical providers chart — array of {name, address, requestSentDate (YYYY-MM-DD or null), requestSentMethod (Mail, Fax, E-mail, or null)}, one per non-blank provider row, else null",
@@ -1689,6 +1959,8 @@ Rules:
   providers, and leave the court-document fields (caseName, docketNumber, etc.) null. Skip template rows with
   no provider name filled in. requestSentDate/requestSentMethod are null for a row that hasn't been sent yet.
 - List anything you are unsure about in "uncertain" so a human checks it.
+- "dateOfService" (complaint only) and "motionReturnDate" (notice of motion only) follow the same rule as every
+  other date here: only the date actually printed on the document, never a computed or assumed one.
 - If this is neither a court document nor a medical providers chart, set documentType to "other" and leave
   every other field null.`;
   return callReader(blockFor(b64,mime),prompt);
@@ -1798,11 +2070,28 @@ function reviewProvidersExtract(x,src){
     toast(`${n} provider${n>1?'s':''} added to Records chase`);
   };
 }
+/* A complaint or notice of motion carries its own NJ-rule deadline, but
+   logging it as a tracked Deadline (so it syncs to Calendar) is a separate,
+   deliberate step — intake only flags the suggestion with the rule already
+   applied, it never writes to DB.deadlines on its own. */
+function suggestDeadlineFromExtract(x){
+  if(/complaint/i.test(x.documentType||'')&&x.dateOfService){
+    const svc=pd(x.dateOfService), r=RULES.find(ru=>ru.k==='answer'), due=svc&&computeRuleDue(r,svc,'');
+    if(due) return `ACTION — log in Deadlines tab: ${r.t} (${r.a}), due ${fmt(due)} (served ${fmt(svc)}).`;
+  }
+  if(/notice of motion/i.test(x.documentType||'')&&x.motionReturnDate){
+    const ret=pd(x.motionReturnDate), opp=RULES.find(ru=>ru.k==='motopp'), rep=RULES.find(ru=>ru.k==='motreply');
+    if(ret) return `ACTION — log in Deadlines tab: ${opp.t} due ${fmt(computeRuleDue(opp,ret,''))}; `
+      +`${rep.t} due ${fmt(computeRuleDue(rep,ret,''))} (return date ${fmt(ret)}).`;
+  }
+  return null;
+}
 function reviewExtract(x,src){
   const hasProviders=Array.isArray(x.providers)&&x.providers.some(p=>p&&p.name&&p.name.trim());
   if(hasProviders||x.documentType==='medical providers chart'){ reviewProvidersExtract(x,src); return; }
   const existing=x.docketNumber?DB.matters.find(m=>norm(m.docket)===norm(x.docketNumber)):null;
   const isOrder=/order|extend/i.test(x.documentType||'');
+  const suggestion=suggestDeadlineFromExtract(x);
   if(existing){
     if(isOrder&&x.discoveryEndDate){ existing.originalDED=existing.originalDED||existing.currentDED||'';
       existing.currentDED=x.discoveryEndDate; }
@@ -1810,16 +2099,18 @@ function reviewExtract(x,src){
     if(x.trialDate) existing.trial=x.trialDate;
     if(x.judge&&!existing.judge) existing.judge=x.judge;
     existing.lastActivity=iso(TODAY);
-    existing.notes=(existing.notes?existing.notes+' ':'')+`[${fmt(TODAY)} ${src}: ${x.summary||x.documentType}]`;
+    existing.notes=(existing.notes?existing.notes+' ':'')+`[${fmt(TODAY)} ${src}: ${x.summary||x.documentType}]`
+      +(suggestion?` ${suggestion}`:'');
     openMatter(existing);
-    toast('Matched an existing matter — review the update');
+    if(suggestion) setTimeout(()=>{const el=document.getElementById('e_notes'); if(el) el.classList.add('flagme');},30);
+    toast(suggestion?'Matched an existing matter — a deadline needs logging':'Matched an existing matter — review the update');
     return;
   }
   const m={id:uid(),side:'defense',name:x.caseName||'',docket:x.docketNumber||'',venue:(x.venue||'').toUpperCase(),
     file:x.ourFileNumber||'',status:'Active',owner:WHO,carrier:'',claim:'',adjuster:'',judge:x.judge||'',
     track:x.track||'II',originalDED:x.discoveryEndDate||'',currentDED:'',sol:'',
     consent:'',motion:'',records:'',depo:'',ime:'',arbitration:x.arbitrationDate||'',trial:x.trialDate||'',
-    notes:`[${fmt(TODAY)} ${src}: ${x.summary||x.documentType}]`,lastActivity:iso(TODAY)};
+    notes:`[${fmt(TODAY)} ${src}: ${x.summary||x.documentType}]`+(suggestion?` ${suggestion}`:''),lastActivity:iso(TODAY)};
   openMatter(null);
   setTimeout(()=>{
     $('#e_name').value=m.name;$('#e_docket').value=m.docket;$('#e_venue').value=m.venue;
@@ -1831,6 +2122,7 @@ function reviewExtract(x,src){
         arbitrationDate:'e_arb',trialDate:'e_trial',ourFileNumber:'e_file',judge:'e_judge',track:'e_track'};
       const el=document.getElementById(map[k]); if(el) el.classList.add('flagme');
     });
+    if(suggestion) $('#e_notes').classList.add('flagme');
     $('#e_oded').dispatchEvent(new Event('input'));
   },30);
 }
@@ -1847,15 +2139,15 @@ function icalEsc(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').r
 function matterCalItems(m){
   const d=derive(m), init=m.owner||'CJG', v=m.venue||'';
   const items=[];
-  if(d.file) items.push({key:'file',date:d.file,
-    summary:`${init}: ${m.name} - FILE MOTION TO EXTEND DISCOVERY (ret ${fmt(d.ret)}) - ${v}`,
+  if(d.file) items.push({key:'file',date:d.file,filing:true,
+    summary:`${init}: ${m.name} - FILE WITH COURT: MOTION TO EXTEND DISCOVERY (ret ${fmt(d.ret)}) - ${v}`,
     description:`DED ${fmt(d.ded)}. Return ${fmt(d.ret)}. R. 1:6-3(a) requires filing and service 16 days before the return date. R. 4:24-1(c) requires the motion be returnable before the discovery period ends.`
       +(d.locked?' CAUTION: a date is already fixed - exceptional circumstances standard applies.':'')
       +` Confirm the return date against the ${v} motion calendar.`});
-  if(d.ded) items.push({key:'ded',date:d.ded,summary:`${init}: ${m.name} - DED - ${v}`,description:`Discovery end date. Docket ${m.docket}. File ${m.file}.`});
-  const a=pd(m.arbitration); if(a) items.push({key:'arbitration',date:a,summary:`${init}: ${m.name} - ARBITRATION - ${v}`,description:`Docket ${m.docket}.`});
-  const t=pd(m.trial); if(t) items.push({key:'trial',date:t,summary:`${init}: ${m.name} - TRIAL - ${v}`,description:`Docket ${m.docket}.`});
-  const s=pd(m.sol); if(s) items.push({key:'sol',date:s,summary:`${init}: ${m.name} - STATUTE OF LIMITATIONS - ${v}`,description:`Plaintiff matter. File ${m.file}.`});
+  if(d.ded) items.push({key:'ded',date:d.ded,filing:false,summary:`${init}: ${m.name} - DED - ${v}`,description:`Discovery end date. Docket ${m.docket}. File ${m.file}.`});
+  const a=pd(m.arbitration); if(a) items.push({key:'arbitration',date:a,filing:false,summary:`${init}: ${m.name} - ARBITRATION - ${v}`,description:`Docket ${m.docket}.`});
+  const t=pd(m.trial); if(t) items.push({key:'trial',date:t,filing:false,summary:`${init}: ${m.name} - TRIAL - ${v}`,description:`Docket ${m.docket}.`});
+  const s=pd(m.sol); if(s) items.push({key:'sol',date:s,filing:true,summary:`${init}: ${m.name} - FILE WITH COURT: COMPLAINT MUST BE FILED (STATUTE OF LIMITATIONS) - ${v}`,description:`Plaintiff matter. File ${m.file}.`});
   return items;
 }
 function buildIcs(){
@@ -1874,6 +2166,11 @@ function buildIcs(){
   DB.discovery.filter(x=>x.status!=='Complete'&&x.dueDate).forEach(x=>{
     const m=mById(x.matterId); if(!m) return;
     ev(pd(x.dueDate),`${m.owner}: ${m.name} - ${x.item.toUpperCase()} DUE - ${m.venue||''}`,`${x.direction}. Served ${fmt(pd(x.served))}. ${x.authority}.`);
+  });
+  DB.deadlines.filter(d=>d.status==='Open'&&d.due).forEach(d=>{
+    const m=mById(d.matterId); if(!m) return;
+    const prefix=d.filing===true?'FILE WITH COURT':d.filing==='confirm'?'CONFIRM FILING REQ.':'DEADLINE';
+    ev(pd(d.due),`${m.owner}: ${m.name} - ${prefix}: ${d.title} - ${m.venue||''}`,`${d.authority}. Trigger ${fmt(pd(d.trigger))}.${d.notes?' '+d.notes:''}`);
   });
   L.push('END:VCALENDAR');return{text:L.join('\r\n'),n};
 }
@@ -1906,7 +2203,7 @@ function renderAll(){
   $('#billRules').innerHTML=SCRUB.map(r=>`<div style="padding:7px 0;border-bottom:1px solid var(--rule2)">
     <strong style="font-size:12.5px">${esc(r.n)}</strong><div class="note">${esc(r.why)}</div></div>`).join('');
   paintKey(); renderSyncStatus(); renderGcalStatus();
-  renderDash();renderMatters();renderDeadlines();renderDiscovery();renderRecords();
+  renderDash();renderMatters();renderDeadlines();renderDeadlineLedger();renderDiscovery();renderRecords();
   renderLetters();renderTasks();renderDirectory();
 }
 function timeAgo(d){
@@ -1998,6 +2295,7 @@ $('#btnKey').onclick=()=>{$$('#tabs button').forEach(x=>x.classList.toggle('on',
 ['fSide','fStatus','fOwner','fSearch'].forEach(i=>$('#'+i).addEventListener('input',renderMatters));
 $('#sentMatterFilter').addEventListener('input',renderSentLetters);
 ['calcRule','calcFrom','calcTrack'].forEach(i=>$('#'+i).addEventListener('input',runCalc));
+$('#btnNewDeadline').onclick=newDeadline;
 $('#btnNewDisc').onclick=newDiscovery;
 $('#btnNewRec').onclick=newRecord;
 $('#btnNewTask').onclick=newTask;
@@ -2036,7 +2334,7 @@ $('#loader').onchange=e=>{
       (inc.matters||[]).forEach(m=>{ const k=mergeKey('matters',m); if(k&&localKeys.has(k)) u++; else a++; });
       const merged=mergeDB(DB,inc);
       DB.matters=merged.matters; DB.discovery=merged.discovery; DB.records=merged.records;
-      DB.tasks=merged.tasks; DB.letters=merged.letters; DB.deleted=merged.deleted;
+      DB.tasks=merged.tasks; DB.letters=merged.letters; DB.deadlines=merged.deadlines; DB.deleted=merged.deleted;
       await save();SyncFS.scheduleSync();renderAll();toast(`${a} matters added, ${u} updated`);
     }catch(err){toast('That file could not be read');}
   };
@@ -2051,7 +2349,7 @@ $('#btnClearKey').onclick=async()=>{APIKEY='';$('#setKey').value='';await Store.
 $('#btnWipe').onclick=async()=>{
   const synced=SyncFS.handle?' This browser is connected to a shared folder — it only clears your local view; the shared file is untouched, and your next sync will bring everything right back. Disconnect first if you actually want it gone from the shared folder too.':'';
   if(!confirm('Erase every matter, task, record, and letter in this browser? Export a handoff file first.'+synced)) return;
-  DB={matters:[],discovery:[],records:[],tasks:[],letters:[],log:[],deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[]}};
+  DB={matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[],log:[],deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[]}};
   await save();renderAll();toast('Erased');
 };
 $('#btnSyncConnect').onclick=()=>SyncFS.connect();
