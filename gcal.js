@@ -35,6 +35,7 @@ export const GCal={
           if(resp.error){ this.status={state:'error',error:String(resp.error)}; renderGcalStatus(); return; }
           this.token=resp.access_token; this.status={state:'connected',error:''};
           this._fetchEmail(); renderGcalStatus();
+          this.drainPendingDeletes(); // retry anything queued while disconnected or mid-error
         }
       });
       renderGcalStatus();
@@ -86,10 +87,29 @@ export const GCal={
     const created=await this._api('/events',{method:'POST',body:JSON.stringify(body)});
     if(created&&created.id) m.gcal[it.key]=created.id;
   },
+  /* Corrected 10/1/2026 (found by a live-Calendar staging check, not a
+     unit test): this never queued anything, and its only caller
+     (syncMatter) bailed out entirely while disconnected — the same bug
+     class deleteEventOn's call sites had before the round-2 fix below,
+     just never applied here. A trial/DED/arbitration date cleared or
+     changed while disconnected left a stale, WRONG event sitting on the
+     shared calendar with no durable retry: reconnecting alone did
+     nothing for it (drainPendingDeletes only knew about deleteEventOn's
+     queue), and only an explicit "Push All" — which recomputes every
+     matter's items regardless of what changed — happened to clean it up.
+     Now mirrors deleteEventOn exactly: queue unconditionally, attempt
+     the live call only if connected, keep m.gcal[key] intact on failure
+     so a retry (or an upsert that would otherwise wrongly recreate it)
+     has the real state to work from. */
   async deleteEvent(m,key){
     if(!m.gcal||!m.gcal[key]) return;
-    try{ await this._api('/events/'+encodeURIComponent(m.gcal[key]),{method:'DELETE'}); }catch(e){}
+    const eventId=m.gcal[key];
+    this.queueDelete(eventId);
+    if(this.status.state!=='connected') return; // queued; drainPendingDeletes() will retry once reconnected
+    try{ await this._api('/events/'+encodeURIComponent(eventId),{method:'DELETE'}); }
+    catch(e){ if(!this.isAlreadyGoneError(e)) return; } // left queued (and m.gcal[key] intact) for retry
     delete m.gcal[key];
+    this.dequeueDelete(eventId);
   },
   /* Generalized pair for records that carry their OWN gcalEventId (tracked
      deadlines, discovery items, records-chase follow-ups) rather than the
@@ -106,24 +126,68 @@ export const GCal={
     const created=await this._api('/events',{method:'POST',body:JSON.stringify(body)});
     if(created&&created.id) rec.gcalEventId=created.id;
   },
+  /* Corrected 10/1/2026 (round 2): keeping rec.gcalEventId on a failed
+     delete only helps if the SAME record is still around to retry it on.
+     Once that record is itself deleted from the DB (the normal next step
+     after closing an obligation), the only surviving reference to the
+     undeleted Calendar event went with it — permanently orphaning it.
+     DB.pendingGcalDeletes is a durable queue, independent of any one
+     record, that survives exactly that. It's also populated even when
+     not currently connected, so a deletion that happens while signed out
+     still gets retried once reconnected instead of never being attempted
+     at all (every deleteEventOn call site used to gate the call itself
+     behind `if connected`, skipping it — and the queue — entirely). */
+  queueDelete(eventId){
+    DB.pendingGcalDeletes=DB.pendingGcalDeletes||[];
+    if(!DB.pendingGcalDeletes.some(p=>p.eventId===eventId))
+      DB.pendingGcalDeletes.push({eventId,at:new Date().toISOString()});
+  },
+  dequeueDelete(eventId){
+    if(DB.pendingGcalDeletes) DB.pendingGcalDeletes=DB.pendingGcalDeletes.filter(p=>p.eventId!==eventId);
+  },
+  /* Corrected 10/1/2026 (round 3): Google returns 404 for an unknown event
+     id, but 410 Gone for one that already existed and was already deleted
+     — which is exactly what happens on a second deletion attempt for the
+     same event (e.g. drainPendingDeletes succeeded once already but the
+     still-live record's own gcalEventId was never cleared — see
+     _forgetEventId below). Treating only 404 as "already gone" left a
+     410 stuck in the queue forever, retried on every Push All/reconnect
+     with no way to ever clear. */
+  isAlreadyGoneError(e){ return /\b(404|410)\b/.test(String(e&&e.message)); },
+  /* Clears a stale gcalEventId from any STILL-LIVE record that references
+     an event the queue just confirmed is gone from the calendar — without
+     this, a record whose deletion was queued while offline (or failed)
+     keeps re-queuing and re-attempting a delete for an event that no
+     longer exists every time something else touches that same record. */
+  _forgetEventId(eventId){
+    for(const coll of [DB.deadlines,DB.discovery,DB.records])
+      for(const r of coll) if(r.gcalEventId===eventId) delete r.gcalEventId;
+    for(const m of DB.matters) if(m.gcal)
+      for(const k of Object.keys(m.gcal)) if(m.gcal[k]===eventId) delete m.gcal[k];
+  },
   async deleteEventOn(rec){
     if(!rec.gcalEventId) return;
-    /* Corrected 10/1/2026: this used to forget the event id even when the
-       DELETE call itself failed (network blip, transient API error) —
-       losing the only thing a later retry would need, so the event stayed
-       on the real Calendar forever with nothing in this app tracking it.
-       Only forget the id once the delete actually succeeds, or once the
-       API confirms it's already gone (404 — nothing left to retry). */
-    try{ await this._api('/events/'+encodeURIComponent(rec.gcalEventId),{method:'DELETE'}); }
-    catch(e){ if(!/404/.test(String(e&&e.message))) return; }
+    const eventId=rec.gcalEventId;
+    this.queueDelete(eventId);
+    if(this.status.state!=='connected') return; // queued; drainPendingDeletes() will retry once reconnected
+    try{ await this._api('/events/'+encodeURIComponent(eventId),{method:'DELETE'}); }
+    catch(e){ if(!this.isAlreadyGoneError(e)) return; } // left queued (and rec.gcalEventId intact) for retry
     delete rec.gcalEventId;
+    this.dequeueDelete(eventId);
   },
   async syncMatter(m){
-    if(this.status.state!=='connected') return;
+    /* Corrected 10/1/2026: the staleness check (a key no longer in
+       matterCalItems(m) means its date was cleared or the matter went
+       non-live) now runs regardless of connection state, so a deletion
+       gets queued immediately instead of only being discovered the next
+       time someone happens to be connected when this matter is saved or
+       edited again. The live upsert (create/update) still requires an
+       actual connection — there's nothing to push without one. */
+    const items=matterCalItems(m), keys=new Set(items.map(i=>i.key));
+    if(m.gcal) for(const k of Object.keys(m.gcal)) if(!keys.has(k)) await this.deleteEvent(m,k);
+    if(this.status.state!=='connected'){ await save(); return; } // persists the queued deletion above
     try{
-      const items=matterCalItems(m), keys=new Set(items.map(i=>i.key));
       for(const it of items) await this.upsertEvent(m,it);
-      if(m.gcal) for(const k of Object.keys(m.gcal)) if(!keys.has(k)) await this.deleteEvent(m,k);
       touch(m); await save(); SyncFS.scheduleSync();
     }catch(e){ toast('Google Calendar: '+e.message); }
   },
@@ -169,8 +233,24 @@ export const GCal={
       touch(r); await save(); SyncFS.scheduleSync();
     }catch(e){ toast('Google Calendar: '+e.message); }
   },
+  /* Drains DB.pendingGcalDeletes — Calendar deletions that failed, or were
+     never attempted because this browser wasn't connected at the time.
+     Independent of DB.deadlines/discovery/records, so it still finds and
+     retries a deletion for an event whose original record has since been
+     removed entirely (see deleteEventOn above). Called from Push All and
+     right after a successful (re)connect. */
+  async drainPendingDeletes(){
+    if(this.status.state!=='connected'||!DB.pendingGcalDeletes||!DB.pendingGcalDeletes.length) return;
+    const queue=DB.pendingGcalDeletes.slice();
+    for(const p of queue){
+      try{ await this._api('/events/'+encodeURIComponent(p.eventId),{method:'DELETE'}); this._forgetEventId(p.eventId); this.dequeueDelete(p.eventId); }
+      catch(e){ if(this.isAlreadyGoneError(e)){ this._forgetEventId(p.eventId); this.dequeueDelete(p.eventId); } } // else leave queued for the next drain
+    }
+    await save();
+  },
   async syncAllMatters(){
     if(this.status.state!=='connected') return toast('Connect Google Calendar first.');
+    await this.drainPendingDeletes();
     const live=DB.matters.filter(isLive);
     const openDeadlines=DB.deadlines.filter(d=>!isDeadlineDone(d));
     const openDisc=DB.discovery.filter(x=>x.status!=='Complete'&&x.dueDate);

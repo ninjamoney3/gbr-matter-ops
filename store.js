@@ -3,13 +3,15 @@ import {DATE_PROPOSAL_FIELDS} from './config.js';
 import {iso, sod} from './dates.js';
 import {$, esc, isLive, norm, toast} from './util.js';
 import {renderAll, renderSyncStatus} from './app.js';
+import {maybeLogOJForTrial} from './workflows.js';
 
 export const K_DATA='gbr-ops-v1', K_KEY='gbr-ops-key', K_WHO='gbr-ops-who';
 
 /* `deleted` holds tombstones {id, at} per collection so a sync merge never
    resurrects something someone deleted — see mergeDB() below. */
 export let DB={matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[],log:[],
-  deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[]}};
+  deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[]},
+  pendingGcalDeletes:[]};
 
 export let APIKEY='', WHO='CJG';
 
@@ -69,15 +71,28 @@ export function mergeKey(coll,rec){ return coll==='matters' ? (norm(rec.docket)|
 function mergeMatterRecord(cur,rec){
   const newer=((rec._updatedAt||'')>(cur._updatedAt||''))?rec:cur;
   const merged=Object.assign({},newer,{id:cur.id});
-  const pdcMap=new Map();
-  [...(cur.pendingDateChanges||[]),...(rec.pendingDateChanges||[])].forEach(p=>pdcMap.set(p.id,p));
-  merged.pendingDateChanges=[...pdcMap.values()];
   const dhSeen=new Set(), dh=[];
   [...(cur.dateHistory||[]),...(rec.dateHistory||[])].forEach(h=>{
-    const key=[h.field,h.kind||'',h.from,h.to,h.at].join('|');
+    const key=[h.field,h.kind||'',h.from,h.to,h.proposed,h.at].join('|');
     if(dhSeen.has(key)) return; dhSeen.add(key); dh.push(h);
   });
   merged.dateHistory=dh;
+  /* Corrected 10/1/2026: a proposal one copy already resolved (accepted,
+     kept, dropped as stale, or rejected as an invalid date) used to come
+     right back as "pending" the moment a stale copy that never saw that
+     resolution got merged in — keepCurrentDate()'s local removal, dropped
+     with nothing else checking for it on the other side. Every resolution
+     path now tags its dateHistory entry with the original proposal's id
+     (see acceptDateChange/keepCurrentDate), so any proposal already
+     resolved on EITHER side is excluded here regardless of which copy
+     still happens to be carrying it as pending. */
+  const resolvedProposalIds=new Set(dh.filter(h=>h.proposalId).map(h=>h.proposalId));
+  const pdcMap=new Map();
+  [...(cur.pendingDateChanges||[]),...(rec.pendingDateChanges||[])].forEach(p=>{
+    if(resolvedProposalIds.has(p.id)) return;
+    pdcMap.set(p.id,p);
+  });
+  merged.pendingDateChanges=[...pdcMap.values()];
   /* Built field-by-field below, never via a blind Object.assign of the two
      fieldUpdatedAt maps — that would let whichever side happens to be
      `rec` win a field's timestamp outright even when `cur`'s is newer,
@@ -261,6 +276,14 @@ export const SyncFS={
       const w=await fh.createWritable();
       await w.write(JSON.stringify({app:'GBR Matter Ops',saved:new Date().toISOString(),db:merged},null,2));
       await w.close();
+      /* Corrected 10/1/2026: a trial date arriving through this merge (from
+         a teammate's copy) used to just sit there — any Offer of Judgment
+         deadline logged against the OLD trial, or a review card already
+         flagged against some earlier intermediate value, stayed stale
+         until someone happened to re-save the matter by hand.
+         maybeLogOJForTrial() already no-ops cheaply when nothing is
+         actually mismatched, so running it for every matter here is safe. */
+      for(const m of DB.matters) await maybeLogOJForTrial(m.id,m.trial);
       this.status={state:'synced',name:this.handle.name,lastSyncedAt:new Date(),error:''};
       renderAll();
     }catch(e){
@@ -303,8 +326,13 @@ export async function loadSettings(){
 export function setWho(v){ WHO=v; }
 export function setApiKey(v){ APIKEY=v; }
 export function resetDB(){
+  // pendingGcalDeletes deliberately survives a wipe: those are real
+  // Calendar events that still need to actually be deleted, independent
+  // of whatever local matter data is being erased.
+  const keepPendingGcalDeletes=DB.pendingGcalDeletes||[];
   DB={matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[],log:[],
-    deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[]}};
+    deleted:{matters:[],discovery:[],records:[],tasks:[],letters:[],deadlines:[]},
+    pendingGcalDeletes:keepPendingGcalDeletes};
 }
 
 export function mById(id){ return DB.matters.find(m=>m.id===id); }

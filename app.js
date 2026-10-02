@@ -231,6 +231,21 @@ export function openMatter(m){
   };
   $('#e_save').onclick=async()=>{
     const g=i=>$('#e_'+i).value;
+    /* Corrected 10/1/2026: a date typed (or pasted/programmatically set)
+       into these fields was never validated before being saved straight
+       onto the matter — an impossible date like 2026-02-31 could reach
+       storage the same way an invalid AI-extracted date could via
+       proposeDateChanges()/acceptDateChange(), just through the manual
+       editor instead. Validate all five date fields before touching
+       anything. (type="date" inputs block most impossible dates on their
+       own in a real browser; this is defense-in-depth for anything that
+       still reaches here — a pasted value, a future browser quirk, or a
+       field set programmatically.) */
+    const invalidDateFields=['oded','cded','arb','trial','sol'].filter(id=>g(id)&&!pd(g(id)));
+    if(invalidDateFields.length){
+      const labels={oded:'Original DED',cded:'Discovery End Date',arb:'Arbitration',trial:'Trial',sol:'Statute of Limitations'};
+      return toast(`Not a valid date — fix ${invalidDateFields.map(id=>labels[id]).join(', ')} before saving`);
+    }
     /* Manual edits get the same change-history protection as an intake
        accept — overwriting a date you'd already recorded, by hand or by
        typo, shouldn't erase what it used to say. Logs any actual change
@@ -273,8 +288,24 @@ export function openMatter(m){
        renderAll() so a newly-logged or newly-flagged deadline isn't invisible
        until some unrelated later action re-renders the Deadlines tab. */
     await maybeLogOJForTrial(m.id,m.trial);
-    await save(); SyncFS.scheduleSync(); renderAll(); $('#modalHost').innerHTML=''; toast(isNew?'Matter added':'Saved');
-    if(GCal.status.state==='connected') GCal.syncMatter(m);
+    /* Corrected 10/1/2026: a storage failure here used to be invisible —
+       the modal closed and "Saved"/"Matter added" showed regardless of
+       whether Store.set actually succeeded, and the edit still got pushed
+       to Calendar. The in-memory matter is left as edited (the form is
+       already closed/gone at this point; there is no partial-save state
+       to usefully revert to), but failure is now reported honestly and
+       nothing claims the edit reached storage when it didn't. */
+    const ok=await save();
+    SyncFS.scheduleSync(); renderAll(); $('#modalHost').innerHTML='';
+    if(!ok){ toast(`${isNew?'Matter':'Save'} may not have persisted in this browser — reload to check before relying on it, or use Save handoff file`); return; }
+    toast(isNew?'Matter added':'Saved');
+    /* Corrected 10/1/2026: gating this behind `if connected` skipped it
+       (and any resulting deletion-queue entry for a cleared date) entirely
+       while disconnected -- found live, by a trial date cleared while
+       disconnected leaving a stale event on the shared calendar that
+       reconnecting alone never cleaned up. syncMatter() now handles the
+       disconnected case itself, so call it unconditionally. */
+    GCal.syncMatter(m);
   };
 }
 
@@ -413,14 +444,14 @@ export function renderDeadlineLedger(){
   $$('[data-dmoot]').forEach(b=>b.onclick=()=>closeMootModal(b.dataset.dmoot));
   $$('[data-ddone]').forEach(b=>b.onclick=async()=>{
     const d=DB.deadlines.find(i=>i.id===b.dataset.ddone); d.status='Done'; touch(d);
-    if(GCal.status.state==='connected') await GCal.deleteEventOn(d);
-    closeLinkedTask(d.id); closeLinkedObligation(d.id);
+    await GCal.deleteEventOn(d);
+    closeLinkedTask(d.id); await closeLinkedObligation(d.id);
     await save();SyncFS.scheduleSync();renderAll();toast('Marked done');});
   $$('[data-dnotice]').forEach(b=>b.onclick=()=>draftDeadlineNotice(b.dataset.dnotice));
   $$('[data-dlx]').forEach(b=>b.onclick=async()=>{
     const d=DB.deadlines.find(i=>i.id===b.dataset.dlx);
-    if(GCal.status.state==='connected'&&d) await GCal.deleteEventOn(d);
-    closeLinkedTask(b.dataset.dlx); closeLinkedObligation(b.dataset.dlx);
+    if(d) await GCal.deleteEventOn(d);
+    closeLinkedTask(b.dataset.dlx); await closeLinkedObligation(b.dataset.dlx);
     tomb('deadlines',b.dataset.dlx);DB.deadlines=DB.deadlines.filter(i=>i.id!==b.dataset.dlx);
     await save();SyncFS.scheduleSync();renderAll();});
 }
@@ -441,10 +472,10 @@ export function renderDiscovery(){
       <td><button class="sm" data-dd="${x.id}">Done</button> <button class="sm" data-dx="${x.id}">×</button></td></tr>`;
   }).join('');
   $$('[data-dd]').forEach(b=>b.onclick=async()=>{const x=DB.discovery.find(i=>i.id===b.dataset.dd);x.status='Complete';touch(x);
-    if(GCal.status.state==='connected') await GCal.deleteEventOn(x);
-    closeLinkedObligation(x.id);
+    await GCal.deleteEventOn(x);
+    await closeLinkedObligation(x.id);
     await save();SyncFS.scheduleSync();renderAll();});
-  $$('[data-dx]').forEach(b=>b.onclick=async()=>{tomb('discovery',b.dataset.dx);DB.discovery=DB.discovery.filter(i=>i.id!==b.dataset.dx);closeLinkedObligation(b.dataset.dx);await save();SyncFS.scheduleSync();renderAll();});
+  $$('[data-dx]').forEach(b=>b.onclick=async()=>{tomb('discovery',b.dataset.dx);DB.discovery=DB.discovery.filter(i=>i.id!==b.dataset.dx);await closeLinkedObligation(b.dataset.dx);await save();SyncFS.scheduleSync();renderAll();});
 }
 
 export function newDiscovery(){
@@ -530,11 +561,11 @@ export function renderRecords(){
     if(GCal.status.state==='connected') GCal.syncRecordItem(r);});
   $$('[data-rr]').forEach(b=>b.onclick=async()=>{
     const r=DB.records.find(i=>i.id===b.dataset.rr);r.status='Received';touch(r);
-    if(GCal.status.state==='connected') await GCal.deleteEventOn(r);
+    await GCal.deleteEventOn(r);
     await save();SyncFS.scheduleSync();renderAll();});
   $$('[data-rx]').forEach(b=>b.onclick=async()=>{
     const r=DB.records.find(i=>i.id===b.dataset.rx);
-    if(GCal.status.state==='connected'&&r) await GCal.deleteEventOn(r);
+    if(r) await GCal.deleteEventOn(r);
     tomb('records',b.dataset.rx);DB.records=DB.records.filter(i=>i.id!==b.dataset.rx);await save();SyncFS.scheduleSync();renderAll();});
 }
 
@@ -961,6 +992,10 @@ $('#loader').onchange=e=>{
       const merged=mergeDB(DB,inc);
       DB.matters=merged.matters; DB.discovery=merged.discovery; DB.records=merged.records;
       DB.tasks=merged.tasks; DB.letters=merged.letters; DB.deadlines=merged.deadlines; DB.deleted=merged.deleted;
+      // Same post-merge reconciliation as SyncFS.sync() — a handoff file can
+      // just as easily bring in a trial date that leaves a dependent
+      // Offer of Judgment deadline stale.
+      for(const m of DB.matters) await maybeLogOJForTrial(m.id,m.trial);
       await save();SyncFS.scheduleSync();renderAll();toast(`${a} matters added, ${u} updated`);
     }catch(err){toast('That file could not be read');}
   };
